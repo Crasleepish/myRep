@@ -1,0 +1,23 @@
+#!/bin/bash
+# My first script
+
+echo "Hello World!"
+
+if [ $(whoami) = "root" ]
+then
+    echo "you are root user"
+else
+    echo "you are an ordinary user"
+fi
+
+echo -n "Enter a key > "
+read text
+case $text in
+    [[:alpha:]] ) echo "you entered a character : $text"
+    ;;
+    [0-9] ) echo "you entered a number : $text"
+    ;;
+    * ) echo "you entered an invalid key"
+esac
+
+exit 0
