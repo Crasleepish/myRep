@@ -1,5 +1,6 @@
 # myRep
 testing repository
 first modifying
-another modification
-hot fix
+another modification append string : hello
+hot fix subsequent modification
+
