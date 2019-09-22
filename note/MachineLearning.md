@@ -162,3 +162,57 @@ If α is too small: slow convergence.
 
 If α is too large: ￼may not decrease on every iteration and thus may not converge.
 
+
+
+## Features and Polynomial Regression
+
+We can **combine** multiple features into one. For example, we can combine x~1~ and x~2~ into a new feature x~3~ by taking x~1~⋅x~2~
+
+- polynomial regression
+
+  We can **change the behavior or curve** of our hypothesis function by making it a quadratic, cubic or square root function (or any other form).
+
+  For example, if our hypothesis function is $h_{\theta}(x)=\theta_{0}+\theta_{1} x_{1}$,then we can create additional features based on x~1~: 
+  $$
+  \begin{aligned}
+  h_{\theta}(x)&=\theta_{0}+\theta_{1} x_{1}+\theta_{2} x_{1}^{2}+\theta_{3} x_{1}^{3}\\
+  &=\theta_0+\theta_1x_1+\theta_2x_2+\theta_3x_3,\text { where } x_{2}=x_{1}^{2} \text { and } x_{3}=x_{1}^{3}
+  \end{aligned}
+  $$
+  if you choose your features this way then feature scaling becomes very important.
+
+
+
+# Computing Parameters Analytically
+
+## Normal Equation
+
+A second way of minimizing J is to solve θ analytically.
+$$
+\frac{\partial{J(\theta)}}{\partial{\theta}}=0
+$$
+make:
+
+$$
+X=\begin{pmatrix}x^{(1)T} \\ x^{(2)T} \\ \vdots \\ x^{(m)T} \end{pmatrix}
+$$
+The normal equation formula is given below:
+$$
+\theta=\left(X^{T} X\right)^{-1} X^{T} y
+$$
+This allows us to find the optimum theta without iteration.
+
+The following is a comparison of gradient descent and the normal equation:
+
+| Gradient Descent           | Normal Equation                              |
+| :------------------------- | :------------------------------------------- |
+| Need to choose alpha       | No need to choose alpha                      |
+| Needs many iterations      | No need to iterate                           |
+| O (kn^2^)                  | O (n^3^), need to calculate inverse of X^T^X |
+| Works well when n is large | Slow if n is very large                      |
+
+If X^T^X is **noninvertible,** the common causes might be having :
+
+- Redundant features, where two features are very closely related (i.e. they are linearly dependent)
+- Too many features (e.g. m ≤ n). In this case, delete some features or use "regularization" (to be explained in a later lesson).
+
