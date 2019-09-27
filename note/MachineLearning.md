@@ -98,6 +98,7 @@ $$
 
 
 
+
 # Multivariate Linear Regression
 
 ## Multiple Features
@@ -131,6 +132,17 @@ In other words:
 $$
 \begin{align*}& \text{repeat until convergence:} \; \lbrace \newline \; & \theta_j := \theta_j - \alpha \frac{1}{m} \sum\limits_{i=1}^{m} (h_\theta(x^{(i)}) - y^{(i)}) \cdot x_j^{(i)} \; & \text{for j := 0...n}\newline \rbrace\end{align*}
 $$
+
+> The gradient descent equation can be vectorized as:
+> $$
+> \theta:=\theta-\frac{\alpha}{m}X^T(X\theta-y)
+> $$
+> where 
+> $$
+> X=(x^{(1)},x^{(2)},...,x^{(m)})^T,\theta=(\theta_0,\theta_1,...,\theta_n)^T,y=(y_0,y_1,...y_m)^T
+> $$
+
+
 
 ## Optimization
 
@@ -194,7 +206,7 @@ $$
 make:
 
 $$
-X=\begin{pmatrix}x^{(1)T} \\ x^{(2)T} \\ \vdots \\ x^{(m)T} \end{pmatrix}
+X=\begin{pmatrix}x^{(1)T} \\ x^{(2)T} \\ \vdots \\ x^{(m)T} \end{pmatrix},y=(y_0,y_1,...y_m)^T
 $$
 The normal equation formula is given below:
 $$
