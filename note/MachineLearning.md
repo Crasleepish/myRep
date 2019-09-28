@@ -91,9 +91,9 @@ As we approach a local minimum, gradient descent will automatically take smaller
 
 
 > In our univariate linear regression
-$$
+> $$
 \begin{align*} \text{repeat until convergence: } \lbrace & \newline \theta_0 := & \theta_0 - \alpha \frac{1}{m} \sum\limits_{i=1}^{m}(h_\theta(x_{i}) - y_{i}) \newline \theta_1 := & \theta_1 - \alpha \frac{1}{m} \sum\limits_{i=1}^{m}\left((h_\theta(x_{i}) - y_{i}) x_{i}\right) \newline \rbrace& \end{align*}
-$$
+> $$
 > This method looks at every example in the entire training set on every step, and is called **batch gradient descent**.
 
 
@@ -161,6 +161,8 @@ $$
   x_i:=\frac{x_i-\mu_i}{s_i}
   $$
   Where μ~i~ is the **average** of all the values for feature (i) and s~i~ is the range of values (max - min), or s~i~ is the standard deviation.
+  
+  > According to the property of standard deviation, let σ be standard deviation, and μ be mean, most of entries of data set are distributed between -2σ + μ and 2σ + μ.
 
 
 
@@ -228,3 +230,92 @@ If X^T^X is **noninvertible,** the common causes might be having :
 - Redundant features, where two features are very closely related (i.e. they are linearly dependent)
 - Too many features (e.g. m ≤ n). In this case, delete some features or use "regularization" (to be explained in a later lesson).
 
+
+
+# Classification and Representation
+
+To attempt classification, one method is to use linear regression and map all predictions greater than 0.5 as a 1 and all less than 0.5 as a 0. However, this method doesn't work well because classification is not actually a linear function.
+
+if we are trying to build a spam classifier for email, then x^{(i)}*x*(*i*) may be some features of a piece of email, and y may be 1 if it is a piece of spam mail, and 0 otherwise. Hence, y∈{0,1}. 0 is also called the **negative class**, and 1 the **positive class**, and they are sometimes also denoted by the symbols “-” and “+.” Given x^{(i)}*x*(*i*), the corresponding y^{(i)}*y*(*i*) is also called the **label** for the training example.
+
+
+
+## Hypothesis Representation
+
+We use "Sigmoid Function", also called "Logistic Function", to define hypothesis formula:
+$$
+\begin{align*}& h_\theta (x) = g ( \theta^T x ) \newline \newline& z = \theta^T x \newline& g(z) = \dfrac{1}{1 + e^{-z}}\end{align*}
+$$
+which satisfy $0 \leq h_{\theta}(x) \leq 1$
+
+h~θ~(x) will give us the **probability** that our output is 1. For example, h~θ~(x)=0.7 gives us a probability of 70% that our output is 1.
+$$
+\begin{align*}& h_\theta(x) = P(y=1 | x ; \theta) = 1 - P(y=0 | x ; \theta) \newline& P(y = 0 | x;\theta) + P(y = 1 | x ; \theta) = 1\end{align*}
+$$
+
+- Decision Boundary
+
+  In order to get our discrete 0 or 1 classification, we can translate the output of the hypothesis function as follows:
+  $$
+  \begin{align*}& h_\theta(x) \geq 0.5 \rightarrow y = 1 \newline& h_\theta(x) < 0.5 \rightarrow y = 0 \newline\end{align*}
+  $$
+  So if our input to g is θ^T^X, then that means:
+  $$
+  \begin{align*}& h_\theta(x) = g(\theta^T x) \geq 0.5 \newline& when \; \theta^T x \geq 0\end{align*}
+  $$
+  we can now say:
+  $$
+  \begin{align*}& \theta^T x \geq 0 \Rightarrow y = 1 \newline& \theta^T x < 0 \Rightarrow y = 0 \newline\end{align*}
+  $$
+  The **decision boundary** is the line that separates the area where y = 0 and where y = 1. It is created by our hypothesis function.
+
+
+
+## Cost Function
+
+We cannot use the same cost function that we use for linear regression because the Logistic Function will cause the output to be wavy, causing many local optima. In other words, it will not be a convex function.
+
+Instead, our cost function for logistic regression looks like:
+$$
+\begin{equation}
+J(\theta) = \dfrac{1}{m} \sum_{i=1}^m \mathrm{Cost}(h_\theta(x^{(i)}),y^{(i)}) \\
+\mathrm{Cost}(h_\theta(x),y)=\left\{ \begin{array}{ll}
+    -\log(h_\theta(x)) \; & \text{if y = 1} \\
+    -\log(1-h_\theta(x)) \; & \text{if y = 0}
+    \end{array}
+\right.
+\end{equation}
+$$
+Writing the cost function in this way guarantees that J(θ) is convex for logistic regression.
+
+We can compress our cost function's two conditional cases into one case:
+$$
+\operatorname{cost}\left(h_{\theta}(x), y\right)=-y \log \left(h_{\theta}(x)\right)-(1-y) \log \left(1-h_{\theta}(x)\right)
+$$
+We can fully write out our entire cost function as follows:
+$$
+J(\theta)=-\frac{1}{m} \sum_{i=1}^{m}\left[y^{(i)} \log \left(h_{\theta}\left(x^{(i)}\right)\right)+\left(1-y^{(i)}\right) \log \left(1-h_{\theta}\left(x^{(i)}\right)\right)\right]
+$$
+A vectorized implementation is:
+$$
+\begin{array}{l}{h=g(X \theta)} \\ {J(\theta)=\frac{1}{m} \cdot\left(-y^{T} \log (h)-(1-y)^{T} \log (1-h)\right)}\end{array}
+$$
+
+
+
+## Gradient Descent
+
+The general form of gradient descent is:
+$$
+\begin{align*}& Repeat \; \lbrace \newline & \; \theta_j := \theta_j - \alpha \dfrac{\partial}{\partial \theta_j}J(\theta) \newline & \rbrace\end{align*}
+$$
+We can work out the derivative part using calculus to get:
+$$
+\begin{align*} & Repeat \; \lbrace \newline & \; \theta_j := \theta_j - \frac{\alpha}{m} \sum_{i=1}^m (h_\theta(x^{(i)}) - y^{(i)}) x_j^{(i)} \newline & \rbrace \end{align*}
+$$
+Notice that this algorithm is identical to the one we used in linear regression.
+
+A vectorized implementation is:
+$$
+\theta :=\theta-\frac{\alpha}{m} X^{T}(g(X \theta)-\vec{y})
+$$
