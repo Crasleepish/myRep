@@ -35,13 +35,15 @@
 
 
 
-# Model and Cost Function
+# Linear Regression
 
 - Univariate linear regression
 
   Linear regression with one variable
 
-## Cost Function
+## Linear Regression with one variable
+
+### Cost Function
 
 We can measure the accuracy of our hypothesis function by using a **cost function**.
 $$
@@ -68,7 +70,7 @@ $$
 
 
 
-## Gradient Descent
+### Gradient Descent
 
 Find the local minimum point of the cost function
 
@@ -99,9 +101,9 @@ As we approach a local minimum, gradient descent will automatically take smaller
 
 
 
-# Multivariate Linear Regression
+## Multivariate Linear Regression
 
-## Multiple Features
+### Multiple Features
 
 Linear regression with multiple variables is also known as "multivariate linear regression".
 $$
@@ -116,7 +118,7 @@ $$
 \begin{align*}h_\theta(x) =\begin{bmatrix}\theta_0 \hspace{2em} \theta_1 \hspace{2em} ... \hspace{2em} \theta_n\end{bmatrix}\begin{bmatrix}x_0 \newline x_1 \newline \vdots \newline x_n\end{bmatrix}= \theta^T x\end{align*}
 $$
 
-## Gradient Descent for Multiple Variables
+### Gradient Descent for Multiple Variables
 
 cost function is as same as previous one variable example:
 $$
@@ -144,7 +146,7 @@ $$
 
 
 
-## Optimization
+### Normalization
 
 - Feature Scaling
 
@@ -166,7 +168,7 @@ $$
 
 
 
-## Learning Rate
+### Learning Rate
 
 - **Debugging gradient descent.** Make a plot with *number of iterations* on the x-axis. Now plot the cost function, J(θ) over the number of iterations of gradient descent. If J(θ) ever increases, then you probably need to decrease α.
 
@@ -178,7 +180,7 @@ If α is too large: ￼may not decrease on every iteration and thus may not conv
 
 
 
-## Features and Polynomial Regression
+### Features and Polynomial Regression
 
 We can **combine** multiple features into one. For example, we can combine x~1~ and x~2~ into a new feature x~3~ by taking x~1~⋅x~2~
 
@@ -197,9 +199,7 @@ We can **combine** multiple features into one. For example, we can combine x~1~ 
 
 
 
-# Computing Parameters Analytically
-
-## Normal Equation
+### Normal Equation
 
 A second way of minimizing J is to solve θ analytically.
 $$
@@ -232,15 +232,19 @@ If X^T^X is **noninvertible,** the common causes might be having :
 
 
 
-# Classification and Representation
+# Logistic Regression
 
 To attempt classification, one method is to use linear regression and map all predictions greater than 0.5 as a 1 and all less than 0.5 as a 0. However, this method doesn't work well because classification is not actually a linear function.
 
-if we are trying to build a spam classifier for email, then x^{(i)}*x*(*i*) may be some features of a piece of email, and y may be 1 if it is a piece of spam mail, and 0 otherwise. Hence, y∈{0,1}. 0 is also called the **negative class**, and 1 the **positive class**, and they are sometimes also denoted by the symbols “-” and “+.” Given x^{(i)}*x*(*i*), the corresponding y^{(i)}*y*(*i*) is also called the **label** for the training example.
+if we are trying to build a spam classifier for email, then x^(i)^ may be some features of a piece of email, and y may be 1 if it is a piece of spam mail, and 0 otherwise. Hence, y∈{0,1}. 0 is also called the **negative class**, and 1 the **positive class**, and they are sometimes also denoted by the symbols “-” and “+.” Given x^{(i)}*x*(*i*), the corresponding y^{(i)}*y*(*i*) is also called the **label** for the training example.
+
+This kind of problem is called **Logistic Regression**.
 
 
 
-## Hypothesis Representation
+## Logistic Regression Model
+
+### Hypothesis Representation
 
 We use "Sigmoid Function", also called "Logistic Function", to define hypothesis formula:
 $$
@@ -271,7 +275,7 @@ $$
 
 
 
-## Cost Function
+### Cost Function
 
 We cannot use the same cost function that we use for linear regression because the Logistic Function will cause the output to be wavy, causing many local optima. In other words, it will not be a convex function.
 
@@ -303,7 +307,7 @@ $$
 
 
 
-## Gradient Descent
+### Gradient Descent
 
 The general form of gradient descent is:
 $$
@@ -319,3 +323,106 @@ A vectorized implementation is:
 $$
 \theta :=\theta-\frac{\alpha}{m} X^{T}(g(X \theta)-\vec{y})
 $$
+
+- Advanced Optimization
+
+  "Conjugate gradient", "BFGS", and "L-BFGS" are more sophisticated, faster ways to optimize θ that can be used instead of gradient descent.
+
+  we can use libraries of matlab.
+
+  We first need to provide a function that evaluates the following two functions for a given input value θ:
+  $$
+  \begin{array}{l}{J(\theta)} \\ {\frac{\partial}{\partial \theta_{j}} J(\theta)}\end{array}
+  $$
+
+  ```matlab
+  function [jVal, gradient] = costFunction(theta)
+    jVal = [...code to compute J(theta)...];
+    gradient(1) = [...code to compute derivative of J(theta)...];
+    gradient(2) = [...code to compute derivative of J(theta)...];
+    ...
+    gradient(j+1) = [...code to compute derivative of J(theta)...];
+  end
+  ```
+
+  Then call the "fminunc()"  function along with the "optimset()" function that creates an object containing the options we want to send to "fminunc()". 
+
+  ```matlab
+  options = optimset('GradObj', 'on', 'MaxIter', 100);
+  initialTheta = zeros(2,1);
+     [optTheta, functionVal, exitFlag] = fminunc(@costFunction, initialTheta, options);
+  ```
+
+
+
+### Multiclass Classification
+
+Instead of y = {0,1} we will expand our definition so that y = {0,1...n}.
+
+- One-vs-all method
+
+  we divide our problem into n+1 binary classification problems; in each one, we predict the probability that 'y' is a member of one of our classes.
+  $$
+  \begin{align*}& y \in \lbrace0, 1 ... n\rbrace \newline& h_\theta^{(0)}(x) = P(y = 0 | x ; \theta) \newline& h_\theta^{(1)}(x) = P(y = 1 | x ; \theta) \newline& \cdots \newline& h_\theta^{(n)}(x) = P(y = n | x ; \theta) \newline& \mathrm{prediction} = \max_i( h_\theta ^{(i)}(x) )\newline\end{align*}
+  $$
+  Train a logistic regression classifier h~θ~(x) for each class to predict if y=i or not. To make a prediction on a new x, pick the class that maximize h~θ~(x).
+
+
+
+## Problem of Overfitting
+
+**Underfitting**, or high bias, is when the form of our hypothesis function h maps poorly to the trend of the data. It is usually caused by a function that is too simple or uses too few features.
+
+At the other extreme, **overfitting**, or high variance, is caused by a hypothesis function that fits the available data but does not generalize well to predict new data. It is usually caused by a complicated function that creates a lot of unnecessary curves and angles unrelated to the data.
+
+This terminology is applied to both linear and logistic regression. There are two main options to address the issue of overfitting:
+
+1) Reduce the number of features:
+
+- Manually select which features to keep.
+- Use a model selection algorithm (studied later in the course).
+
+2) Regularization
+
+- Keep all the features, but reduce the magnitude of parameters \θ~j~.
+- Regularization works well when we have a lot of slightly useful features.
+
+### Regularization: Cost Function
+
+If we have overfitting from our hypothesis function, we can reduce the weight that some of the terms in our function carry by increasing their cost.
+
+We'll want to eliminate the influence of $\theta_{3} x^{3}$ and $\theta_{4} x^{4}$ . Without actually getting rid of these features or changing the form of our hypothesis, we can instead modify our **cost function**:
+$$
+\min _{\theta} \left\{ \frac{1}{2 m} \sum_{i=1}^{m}\left(h_{\theta}\left(x^{(i)}\right)-y^{(i)}\right)^{2}+1000 \cdot \theta_{3}^{2}+1000 \cdot \theta_{4}^{2}\right\}
+$$
+Now, in order for the cost function to get close to zero, we will have to reduce the values of θ~3~ and θ~4~ to near zero. As a result, we see that the new hypothesis looks like a quadratic function but fits the data better.
+
+We could also regularize all of our theta parameters in a single summation as:
+$$
+\min _{\theta} \left\{ \frac{1}{2 m} \sum_{i=1}^{m}\left(h_{\theta}\left(x^{(i)}\right)-y^{(i)}\right)^{2}+\lambda \sum_{j=1}^{n} \theta_{j}^{2} \right\}
+$$
+The λ, or lambda, is the **regularization parameter**. It determines how much the costs of our theta parameters are inflated. If lambda is chosen to be too large, it may smooth out the function too much and cause underfitting. 
+
+### Regularized Linear Regression
+
+- Gradient Descent
+  $$
+  \begin{align*} & \text{Repeat}\ \lbrace \newline & \ \ \ \ \theta_0 := \theta_0 - \alpha\ \frac{1}{m}\ \sum_{i=1}^m (h_\theta(x^{(i)}) - y^{(i)})x_0^{(i)} \newline & \ \ \ \ \theta_j := \theta_j - \alpha\ \left[ \left( \frac{1}{m}\ \sum_{i=1}^m (h_\theta(x^{(i)}) - y^{(i)})x_j^{(i)} \right) + \frac{\lambda}{m}\theta_j \right] &\ \ \ \ \ \ \ \ \ \ j \in \lbrace 1,2...n\rbrace\newline & \rbrace \end{align*}
+  $$
+  With some manipulation our update rule can also be represented as:
+  $$
+  \theta_{j} :=\theta_{j}\left(1-\alpha \frac{\lambda}{m}\right)-\alpha \frac{1}{m} \sum_{i=1}^{m}\left(h_{\theta}\left(x^{(i)}\right)-y^{(i)}\right) x_{j}^{(i)}
+  $$
+  Notice that the second term is now exactly the same as it was before.
+
+- Normal Equation
+
+  To add in regularization, the equation is the same as our original, except that we add another term inside the parentheses:
+  $$
+  \begin{align*}& \theta = \left( X^TX + \lambda \cdot L \right)^{-1} X^Ty \newline& \text{where}\ \ L = \begin{bmatrix} 0 & & & & \newline & 1 & & & \newline & & 1 & & \newline & & & \ddots & \newline & & & & 1 \newline\end{bmatrix}\end{align*}
+  $$
+  Matrix L should have dimension (n+1)×(n+1).
+
+  Recall that if m < n, then X^T^X is non-invertible. However, when we add the term λ⋅L, then X^T^X + λ⋅L becomes invertible.
+
+  
