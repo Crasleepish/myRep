@@ -399,8 +399,10 @@ Now, in order for the cost function to get close to zero, we will have to reduce
 
 We could also regularize all of our theta parameters in a single summation as:
 $$
-\min _{\theta} \left\{ \frac{1}{2 m} \sum_{i=1}^{m}\left(h_{\theta}\left(x^{(i)}\right)-y^{(i)}\right)^{2}+\lambda \sum_{j=1}^{n} \theta_{j}^{2} \right\}
+\min _{\theta} \left\{ \frac{1}{2 m} \left[\sum_{i=1}^{m}\left(h_{\theta}\left(x^{(i)}\right)-y^{(i)}\right)^{2}+\lambda \sum_{j=1}^{n} \theta_{j}^{2} \right] \right\}
 $$
+Note that we generally don't regularize θ~0~ in the previous cost function.
+
 The λ, or lambda, is the **regularization parameter**. It determines how much the costs of our theta parameters are inflated. If lambda is chosen to be too large, it may smooth out the function too much and cause underfitting. 
 
 ### Regularized Linear Regression
@@ -409,12 +411,14 @@ The λ, or lambda, is the **regularization parameter**. It determines how much t
   $$
   \begin{align*} & \text{Repeat}\ \lbrace \newline & \ \ \ \ \theta_0 := \theta_0 - \alpha\ \frac{1}{m}\ \sum_{i=1}^m (h_\theta(x^{(i)}) - y^{(i)})x_0^{(i)} \newline & \ \ \ \ \theta_j := \theta_j - \alpha\ \left[ \left( \frac{1}{m}\ \sum_{i=1}^m (h_\theta(x^{(i)}) - y^{(i)})x_j^{(i)} \right) + \frac{\lambda}{m}\theta_j \right] &\ \ \ \ \ \ \ \ \ \ j \in \lbrace 1,2...n\rbrace\newline & \rbrace \end{align*}
   $$
+  we don't regularize θ~0~ therefore we write update rule for θ~0~ separately.
+  
   With some manipulation our update rule can also be represented as:
   $$
   \theta_{j} :=\theta_{j}\left(1-\alpha \frac{\lambda}{m}\right)-\alpha \frac{1}{m} \sum_{i=1}^{m}\left(h_{\theta}\left(x^{(i)}\right)-y^{(i)}\right) x_{j}^{(i)}
   $$
   Notice that the second term is now exactly the same as it was before.
-
+  
 - Normal Equation
 
   To add in regularization, the equation is the same as our original, except that we add another term inside the parentheses:
@@ -425,4 +429,72 @@ The λ, or lambda, is the **regularization parameter**. It determines how much t
 
   Recall that if m < n, then X^T^X is non-invertible. However, when we add the term λ⋅L, then X^T^X + λ⋅L becomes invertible.
 
-  
+
+### Regularized Logistic Regression
+
+- Cost Function
+
+  We can regularize this equation by adding a term to the end:
+  $$
+J(\theta)=-\frac{1}{m} \sum_{i=1}^{m}\left[y^{(i)} \log \left(h_{\theta}\left(x^{(i)}\right)\right)+\left(1-y^{(i)}\right) \log \left(1-h_{\theta}\left(x^{(i)}\right)\right)\right]+\frac{\lambda}{2 m} \sum_{j=1}^{n} \theta_{j}^{2}
+  $$
+  this sum explicitly skips θ~0~, by running from 1 to n, skipping 0. Thus, when computing the equation, we should continuously update the two following equations:
+
+- Gradient descent
+  $$
+\begin{align*} & \text{Repeat}\ \lbrace \newline & \ \ \ \ \theta_0 := \theta_0 - \alpha\ \frac{1}{m}\ \sum_{i=1}^m (h_\theta(x^{(i)}) - y^{(i)})x_0^{(i)} \newline & \ \ \ \ \theta_j := \theta_j - \alpha\ \left[ \left( \frac{1}{m}\ \sum_{i=1}^m (h_\theta(x^{(i)}) - y^{(i)})x_j^{(i)} \right) + \frac{\lambda}{m}\theta_j \right] &\ \ \ \ \ \ \ \ \ \ j \in \lbrace 1,2...n\rbrace\newline & \rbrace \end{align*}
+  $$
+
+
+
+# Neural Networks: Representation
+
+## Model Representation
+
+At a very simple level, neurons are basically computational units that take inputs (**dendrites**) as electrical inputs (called "spikes") that are channeled to outputs (**axons**). In our model, our dendrites are like the input features *x~1~⋯*x~n~, and the output is the result of our hypothesis function. 
+
+*x*~0~ input node is sometimes called the "bias unit." It is always equal to 1.
+
+We use the same logistic function as in classification, yet we sometimes call it a sigmoid (logistic) **activation** function. 
+
+Our "theta" parameters are sometimes called "weights".
+
+![Neural Network](./1.png)
+
+Our input nodes (layer 1), also known as the "**input layer**", go into another node (layer 2), which finally outputs the hypothesis function, known as the "**output layer**".
+
+We can have intermediate layers of nodes between the input and output layers called the "**hidden layers**."
+$$
+\begin{align*}& a_i^{(j)} = \text{"activation" of unit $i$ in layer $j$} \newline& \Theta^{(j)} = \text{matrix of weights controlling function mapping from layer $j$ to layer $j+1$}\end{align*}
+$$
+The values for each of the "activation" nodes is obtained as follows:
+$$
+\begin{align*} a_1^{(2)} = g(\Theta_{10}^{(1)}x_0 + \Theta_{11}^{(1)}x_1 + \Theta_{12}^{(1)}x_2 + \Theta_{13}^{(1)}x_3) \newline a_2^{(2)} = g(\Theta_{20}^{(1)}x_0 + \Theta_{21}^{(1)}x_1 + \Theta_{22}^{(1)}x_2 + \Theta_{23}^{(1)}x_3) \newline a_3^{(2)} = g(\Theta_{30}^{(1)}x_0 + \Theta_{31}^{(1)}x_1 + \Theta_{32}^{(1)}x_2 + \Theta_{33}^{(1)}x_3) \newline h_\Theta(x) = a_1^{(3)} = g(\Theta_{10}^{(2)}a_0^{(2)} + \Theta_{11}^{(2)}a_1^{(2)} + \Theta_{12}^{(2)}a_2^{(2)} + \Theta_{13}^{(2)}a_3^{(2)}) \newline \end{align*}
+$$
+g(z) is sigmoid function.
+
+The dimensions of these matrices of weights is determined as follows:
+$$
+\text{If network has $s_j$ units in layer $j$ and $s_{j+1}$ units in layer $j+1$,} \\ \text{then $\Theta^{(j)}$ will be of dimension $s_{j+1} \times (s_j + 1)$.}
+$$
+We will do a vectorized implementation. We are going to define:
+$$
+z_k^{(2)} = \Theta_{k,0}^{(1)}x_0 + \Theta_{k,1}^{(1)}x_1 + \cdots + \Theta_{k,n}^{(1)}x_n \tag{i}
+$$
+and
+$$
+\begin{align*}x = a^{(1)} = \begin{bmatrix}x_0 \newline x_1 \newline\cdots \newline x_n\end{bmatrix} &z^{(j)} = \begin{bmatrix}z_1^{(j)} \newline z_2^{(j)} \newline\cdots \newline z_n^{(j)}\end{bmatrix}\end{align*}
+$$
+we can rewrite the equation (i) as:
+$$
+z^{(j)} = \Theta^{(j-1)}a^{(j-1)} \\
+a^{(j)}=g\left(z^{(j)}\right)
+$$
+We can then add a bias unit (equal to 1) to layer j after we have computed a^(j)^, This will be element a~0~^(j)^ and will be equal to 1. 
+$$
+h_{\Theta}(x)=a^{(j+1)}=g\left(z^{(j+1)}\right)
+$$
+
+
+## Applications
+
