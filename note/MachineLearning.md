@@ -495,6 +495,85 @@ $$
 h_{\Theta}(x)=a^{(j+1)}=g\left(z^{(j+1)}\right)
 $$
 
+To classify data into multiple classes, we let our hypothesis function return a vector of values. Say we wanted to classify our data into one of four categories. We can define our set of resulting classes as y:
+$$
+y^{(i)}=\left[\begin{array}{l}{1} \\ {0} \\ {0} \\ {0}\end{array}\right],\left[\begin{array}{l}{0} \\ {1} \\ {0} \\ {0}\end{array}\right],\left[\begin{array}{l}{0} \\ {0} \\ {1} \\ {0}\end{array}\right],\left[\begin{array}{l}{0} \\ {0} \\ {0} \\ {1}\end{array}\right]
+$$
+The inner layers, each provide us with some new information which leads to our final hypothesis function. 
 
-## Applications
+
+
+# Neural Networks: Learning
+
+## Cost Function
+
+Let's first define a few variables that we will need to use:
+
+- L = total number of layers in the network
+- $s_l$ = number of units (not counting bias unit) in layer l
+- K = number of output units/classes
+
+We denote $h_\Theta(x)_k$ as being a hypothesis that results in the kth output. Our cost function for neural networks is going to be a generalization of the one we used for logistic regression. 
+$$
+\begin{gather*} J(\Theta) = - \frac{1}{m} \sum_{i=1}^m \sum_{k=1}^K \left[y^{(i)}_k \log ((h_\Theta (x^{(i)}))_k) + (1 - y^{(i)}_k)\log (1 - (h_\Theta(x^{(i)}))_k)\right] + \frac{\lambda}{2m}\sum_{l=1}^{L-1} \sum_{i=1}^{s_l} \sum_{j=1}^{s_{l+1}} ( \Theta_{j,i}^{(l)})^2\end{gather*}
+$$
+Note:
+
+- the double sum simply adds up the logistic regression costs calculated for each cell in the output layer
+- the triple sum simply adds up the squares of all the individual Θs in the entire network, except for i=0 which correspond to bias units.
+- the i in the triple sum does **not** refer to training example i
+
+
+
+## Back-propagation Algorithm
+
+Our goal is to compute: $\min_{\Theta}J(\Theta)$
+
+To compute the partial derivative of J, we use the following algorithm.
+
+Given training set $\left\{\left(x^{(1)}, y^{(1)}\right) \cdots\left(x^{(m)}, y^{(m)}\right)\right\}$
+
+- set $\Delta_{i, j}^{(l)}:=0$ for all (l,i,j), (hence you end up having a matrix full of zeros)
+
+For training example t =1 to m:
+
+1. Set $a^{(1)}:=x^{(t)}$
+
+2. Perform forward propagation to compute $a^{(l)}$ for l=2,3,…,L
+
+3. Using $y^{(t)}$, compute $\delta^{(L)}=a^{(L)}-y^{(t)}$
+
+   Where L is our total number of layers. So our "error values" for the last layer are simply the differences of our actual results in the last layer and the correct outputs in y. To get the delta values of the layers before the last layer, we can use an equation that steps us back from right to left:
+
+4. Compute $\delta^{(L-1)}, \delta^{(L-2)}, \dots, \delta^{(2)}$ using 
+   $$
+   \delta^{(l)}=\left(\left(\Theta^{(l)}\right)^{T} \delta^{(l+1)}\right) \cdot * g'(z^{(l)})
+   $$
+   
+
+   The g-prime derivative terms can also be written out as:
+   $$
+   g^{\prime}\left(z^{(l)}\right)=a^{(l)} \cdot *\left(1-a^{(l)}\right)
+   $$
+
+5. $\Delta_{i, j}^{(l)}:=\Delta_{i, j}^{(l)}+a_{j}^{(l)} \delta_{i}^{(l+1)}$ or with vectorization, $\Delta^{(l)}:=\Delta^{(l)}+\delta^{(l+1)}\left(a^{(l)}\right)^{T}$
+
+   Hence we update our new $\Delta$ matrix.
+   
+   Here end our for loop body.
+
+- $D_{i, j}^{(l)}:=\frac{1}{m}\left(\Delta_{i, j}^{(l)}+\lambda \Theta_{i, j}^{(l)}\right), \text { if } j \neq 0$
+- $D_{i, j}^{(l)}:=\frac{1}{m} \Delta_{i, j}^{(l)}, \text { if } j=0$
+
+Thus we get $\frac{\partial}{\partial \Theta_{i j}^{(l)}} J(\Theta)=D_{i j}^{(l)}$
+
+> If we consider simple non-multiclass classification (k = 1) and disregard regularization, the cost is computed with:
+> $$
+> cost(t) =y^{(t)} \ \log (h_\Theta (x^{(t)})) + (1 - y^{(t)})\ \log (1 - h_\Theta(x^{(t)}))
+> $$
+> In fact, $\delta^{(l)}_j$ is the "error" for $a^{(l)}_j$. More formally,
+> $$
+> \delta_j^{(l)} = \dfrac{\partial}{\partial z_j^{(l)}} cost(t)
+> $$
+> 
 
