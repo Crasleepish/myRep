@@ -560,7 +560,7 @@ For training example t =1 to m:
 
    Hence we update our new $\Delta$ matrix.
    
-   Here end our for loop body.
+   Here ends our for loop body.
 
 - $D_{i, j}^{(l)}:=\frac{1}{m}\left(\Delta_{i, j}^{(l)}+\lambda \Theta_{i, j}^{(l)}\right), \text { if } j \neq 0$
 - $D_{i, j}^{(l)}:=\frac{1}{m} \Delta_{i, j}^{(l)}, \text { if } j=0$
@@ -576,4 +576,18 @@ Thus we get $\frac{\partial}{\partial \Theta_{i j}^{(l)}} J(\Theta)=D_{i j}^{(l)
 > \delta_j^{(l)} = \dfrac{\partial}{\partial z_j^{(l)}} cost(t)
 > $$
 > 
+
+
+
+## Gradient Checking
+
+Gradient checking will assure that our backpropagation works as intended. We can approximate the derivative of our cost function with:
+$$
+\frac{\partial}{\partial \Theta_{j}} J(\Theta) \approx \frac{J\left(\Theta_{1}, \ldots, \Theta_{j}+\epsilon, \ldots, \Theta_{n}\right)-J\left(\Theta_{1}, \ldots, \Theta_{j}-\epsilon, \ldots, \Theta_{n}\right)}{2 \epsilon}
+$$
+A small value for *ϵ* (epsilon) such as $\epsilon=10^{-4}$,  guarantees that the math works out properly. 
+
+Once you have verified **once** that your backpropagation algorithm is correct, you don't need to compute gradApprox again. The code to compute gradApprox can be very slow.
+
+
 
