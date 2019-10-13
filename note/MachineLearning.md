@@ -591,3 +591,29 @@ Once you have verified **once** that your backpropagation algorithm is correct, 
 
 
 
+## Random Initialization
+
+Initializing all theta weights to zero does not work with neural networks. When we backpropagate, all nodes will update to the same value repeatedly. Instead we can randomly initialize our weights for our Θ matrices.
+
+```matlab
+If the dimensions of Theta1 is 10x11, Theta2 is 10x11 and Theta3 is 1x11.
+
+Theta1 = rand(10,11) * (2 * INIT_EPSILON) - INIT_EPSILON;
+Theta2 = rand(10,11) * (2 * INIT_EPSILON) - INIT_EPSILON;
+Theta3 = rand(1,11) * (2 * INIT_EPSILON) - INIT_EPSILO
+```
+
+(Note: the epsilon used above is unrelated to the epsilon from Gradient Checking)
+
+One effective strategy for choosing ε is to base it on the number of units in the network. For matrix $\Theta^{(l)}$, a good choice is $\epsilon=\frac{\sqrt{6}}{\sqrt{L_{in}+L_{out}}}$, where $L_{in}=S^l$ and $L_{out}=S^{l+1}$, that is the number of units of layers adjacent to $\Theta^{(l)}$. 
+
+
+
+## Other tips
+
+- Number of hidden units per layer = usually more the better (must balance with cost of computation as it increases with more hidden units)
+- Defaults: 1 hidden layer. If you have more than 1 hidden layer, then it is recommended that you have the same number of units in every hidden layer.
+- keep in mind that *J*(Θ) is not convex and thus we can end up in a local minimum instead.
+
+
+
