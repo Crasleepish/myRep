@@ -617,3 +617,120 @@ One effective strategy for choosing ε is to base it on the number of units in t
 
 
 
+# Advice For Applying Machine Learning
+
+## Evaluating a Hypothesis
+
+Once we have done some trouble shooting for errors in our predictions by:
+
+- Getting more training examples
+- Trying smaller sets of features
+- Trying additional features
+- Trying polynomial features
+- Increasing or decreasing λ
+
+To evaluate a hypothesis, given a dataset of training examples, we can split up the data into two sets: a **training set** and a **test set**. Typically, the training set consists of 70 % of your data and the test set is the remaining 30 %.
+
+The new procedure using these two sets is then:
+
+1. Learn Θ and minimize J(Θ) using the training set
+2. Compute the test set error J~test~(Θ)
+
+For linear regression:
+$$
+J_{t e s t}(\Theta)=\frac{1}{2 m_{t e s t}} \sum_{i=1}^{m_{t e s t}}\left(h_{\Theta}\left(x_{t e s t}^{(i)}\right)-y_{t e s t}^{(i)}\right)^{2}
+$$
+For classification ~ Misclassification error  (aka 0/1 misclassification error):
+$$
+err(h_\Theta(x),y) = \begin{matrix} 1 & \mbox{if } h_\Theta(x) \geq 0.5\ and\ y = 0\ or\ h_\Theta(x) < 0.5\ and\ y = 1\newline 0 & \mbox otherwise \end{matrix}
+$$
+The average test error for the test set is:
+$$
+\text { Test Error }=\frac{1}{m_{\text {test}}} \sum_{i=1}^{m_{t e s t}} \operatorname{err}\left(h_{\Theta}\left(x_{\text {test}}^{(i)}\right), y_{\text {test}}^{(i)}\right)
+$$
+This gives us the proportion of the test data that was misclassified.
+
+
+
+## Model Selection - Select Polynomial Degrees
+
+Given many models with different polynomial degrees, we can use a systematic approach to identify the 'best' function. In order to choose the model of your hypothesis, you can test each degree of polynomial and look at the error result.
+
+One way to break down our dataset into the three sets is:
+
+- Training set: 60%
+- Cross validation set: 20%
+- Test set: 20%
+
+We can now calculate three separate error values for the three different sets using the following method:
+
+1. Optimize the parameters in Θ using the training set for each polynomial degree.
+2. Find the polynomial degree d with the least error using the cross validation set.
+3. Estimate the generalization error using the test set with J~test~(Θ(*d*)), (d = theta from polynomial with lower error);
+
+This way, the degree of the polynomial d has not been trained using the test set.
+
+
+
+## Bias vs. Variance - Select Regularization Params
+
+- We need to distinguish whether **bias** or **variance** is the problem contributing to bad predictions.
+- High bias is underfitting and high variance is overfitting. Ideally, we need to find a golden mean between these two.
+
+In order to choose the model and the regularization term λ, we need to:
+
+1. Create a list of lambdas (i.e. λ∈{0,0.01,0.02,0.04,0.08,0.16,0.32,0.64,1.28,2.56,5.12,10.24});
+2. Create a set of models with different λs.
+3. Iterate through the λs and for each λ go through all the models to learn some Θ.
+4. Compute the cross validation error using the learned Θ (computed with λ) on the J~CV~(Θ) **without** regularization.
+5. Select the best combo that produces the lowest error on the cross validation set.
+6. Using the best combo Θ and λ, apply it on J~test~(Θ) to see if it has a good generalization of the problem.
+
+Note that J~CV~(Θ) and J~test~(Θ) **doesn't** contain any regularization terms.
+
+### Learning Curves
+
+Training an algorithm on a very few number of data points (such as 1, 2 or 3) will easily have 0 errors because we can always find a quadratic curve that touches exactly those number of points. Hence:
+
+- As the training set gets larger, the error for a quadratic function increases.
+- The error value will plateau out after a certain m, or training set size.
+
+Plot J~train~(Θ) and J~CV~(Θ) as a function of training set size.
+
+**Experiencing high bias:**
+
+**Low training set size**: causes J~train~(Θ) to be low and J~CV~(Θ) to be high.
+
+**Large training set size**: causes both J~train~(Θ) and J~CV~(Θ) to be high with J~train~(Θ) ≈J~CV~(Θ).
+
+If a learning algorithm is suffering from **high bias**, getting more training data will not **(by itself)** help much.
+
+![](./2.png)
+
+**Experiencing high variance:**
+
+**Low training set size**: J~train~(Θ) will be low and J~CV~(Θ) will be high.
+
+**Large training set size**: J~train~(Θ) increases with training set size and J~CV~(Θ) continues to decrease without leveling off. Also, J~train~(Θ) < J~CV~(Θ) but the difference between them remains significant.
+
+If a learning algorithm is suffering from **high variance**, getting more training data is likely to help.
+
+![](./3.png)
+
+### **Diagnosing**
+
+- **Getting more training examples:** Fixes high variance
+
+- **Trying smaller sets of features:** Fixes high variance
+
+- **Adding features:** Fixes high bias
+
+- **Adding polynomial features:** Fixes high bias
+
+- **Decreasing λ:** Fixes high bias
+
+- **Increasing λ:** Fixes high variance.
+
+- A neural network with fewer parameters is **prone to underfitting**. It is also **computationally cheaper**.
+- A large neural network with more parameters is **prone to overfitting**. It is also **computationally expensive**. In this case you can use regularization (increase λ) to address the overfitting.
+
