@@ -734,3 +734,41 @@ If a learning algorithm is suffering from **high variance**, getting more traini
 - A neural network with fewer parameters is **prone to underfitting**. It is also **computationally cheaper**.
 - A large neural network with more parameters is **prone to overfitting**. It is also **computationally expensive**. In this case you can use regularization (increase λ) to address the overfitting.
 
+
+
+# Support Vector Machines
+
+## Optimization Objective
+
+- cost function
+
+$$
+C \sum_{i=1}^{m} \left[ y^{(i)} \text{cost}_{1}\left(\theta^{T} x^{(i)}\right) + (1-y^{(i)})\text{cost}_{0}(\theta^Tx^{(i)})\right] + \frac{1}{2}\sum_{j=1}^n\theta_j^2
+$$
+
+note that compare to the cost function of logistic regression, we remove the 1/m coefficient.
+
+cost~1~ function looks like (the magenta line)
+
+![](./4.png)
+
+and cost~0~ function 
+
+![](./5.png)
+
+Parameter C play the role of λ in the regularization term. When C = 1/λ, the following two optimization problem will give the same result:
+$$
+\min _{\theta} \frac{1}{m}\left[\sum_{i=1}^{m} y^{(i)} \operatorname{cost}_{1}\left(\theta^{T} x^{(i)}\right)+\left(1-y^{(i)}\right) \operatorname{cost}_{0}\left(\theta^{T} x^{(i)}\right)\right]+\frac{\lambda}{2 m} \sum_{j=1}^{n} \theta_{j}^{2} \\
+\min _{\theta} C\left[\sum_{i=1}^{m} y^{(i)} \operatorname{cost}_{1}\left(\theta^{T} x^{(i)}\right)+\left(1-y^{(i)}\right) \operatorname{cost}_{0}\left(\theta^{T} x^{(i)}\right)\right]+\frac{1}{2} \sum_{j=1}^{n} \theta_{j}^{2}
+$$
+
+- hypothesis
+
+$$
+h_{\theta}(x) = \left\{\begin{array}{ll}{1} & {\text { if } \quad \theta^{T} x \geqslant 0} \\ {0} & {\text { otherwise }}\end{array}\right.
+$$
+
+SVM can get a large margin decision boundary. if y=1, we want $\theta^T \ge 1$ (not just $\ge0$); if y=0, we want $\theta^T \le -1$ (not just $\lt 0$)
+
+if C is very large, SVM tend to get a large margin between positive data point or negative data point; if C is not too large, it can get reasonable result even if the data is not linearly separable.
+
