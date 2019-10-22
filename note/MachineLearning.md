@@ -772,3 +772,79 @@ SVM can get a large margin decision boundary. if y=1, we want $\theta^T \ge 1$ (
 
 if C is very large, SVM tend to get a large margin between positive data point or negative data point; if C is not too large, it can get reasonable result even if the data is not linearly separable.
 
+
+
+## Kernels
+
+To learn a complex decision boundary, instead of using high order polynomial, we can use kernels for SVM.
+$$
+h_{\theta}(x) = \left\{\begin{array}{ll}{1} & {\text { if } \quad \theta_0+\theta_1f_1+\theta_2f_2+\dots \geqslant 0} \\ {0} & {\text { otherwise }}\end{array}\right.
+$$
+When using high order polynomial, we may choose f~1~=x~1~, f~2~=x~2~, f~3~=x~1~x~2~, f~4~=x~1~^2^, ...
+
+Now we use kernels to define f~n~
+
+manually choose several landmarks $l^{(n)}$ in features space (for example: 3 lanmarks in x~1~Ox~2~ coordination)
+
+![](./6.png)
+
+Given f~n~ , depends on similarity between $x^{(i)}$ and $l^{(n)}$
+$$
+f_{n}=\operatorname{similarity}\left(x, l^{(n)}\right)=\exp \left(-\frac{\left\|x-l^{(n)}\right\|^{2}}{2 \sigma^{2}}\right)=\exp \left(-\frac{\sum_{j=1}^{n}\left(x_{j}-l_{j}^{(n)}\right)^{2}}{2 \sigma^{2}}\right)
+$$
+This similarity function is defined using Gaussian distribution, called Gaussian kernel.
+
+When x is close to $l^{(n)}$, f~n~ is close to 1; when x is far from $l^{(n)}$, f~n~ is close to 0;
+
+The decision boundary may looks like:
+
+![](./7.png)
+
+The way of choosing $l^{(n)}$ is always by using training examples
+$$
+\begin{array}{l}{\text { Given }\left(x^{(1)}, y^{(1)}\right),\left(x^{(2)}, y^{(2)}\right), \ldots,\left(x^{(m)}, y^{(m)}\right)} \\ {\text { Choose } l^{(1)}=x^{(1)}, l^{(2)}=x^{(2)}, \ldots, l^{(m)}=x^{(m)}}\end{array}
+$$
+Then training:
+$$
+\min _{\theta} C \sum_{i=1}^{m} y^{(i)} \operatorname{cost}_{1}\left(\theta^{T} f^{(i)}\right)+\left(1-y^{(i)}\right) \operatorname{cost}_{0}\left(\theta^{T} f^{(i)}\right)+\frac{1}{2} \sum_{j=1}^{n} \theta_{j}^{2}
+$$
+In fact the regularization term will be slightly different for computational efficiency:
+$$
+\frac{1}{2}\theta^TM\theta
+$$
+which M is a Matrix corresponding to particular kernel function. Here we use implemented library function to solve the SVM, which use this modified way.
+
+- bias and variance
+
+Large C: low bias, high variance
+
+Small C: high bias, low variance
+
+Large $\sigma$: high bias, low variance
+
+Small $\sigma$: low bias, high variance
+
+- Use SVM software package to solve for parameters θ Need to specify:
+
+  Choice of parameter C.
+
+  Choice of kernel (similarity function): e.g. No kernel("linear kernel") or Gaussian kernel.
+
+Note: Do perform feature scaling using the Gaussian kernel.
+
+- Logistic regression vs. SVMs
+
+  n = number of features, m = number of training examples.
+
+  if n is large (relative to m):
+
+  Use logistic regression, or SVM without a kernel (linear kernel)
+
+  if n is small, m is intermediate, use SVM with Gaussian kernel (n=1-1,000, m=10-10,000)
+
+  if n is small, m is large: Create/add more features, then use logistic regression or SVM without a kernel.
+
+  Neural network likely to work well for most of these settings, but may be slower to train.
+
+  
+
