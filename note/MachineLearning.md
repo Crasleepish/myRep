@@ -848,3 +848,71 @@ Note: Do perform feature scaling using the Gaussian kernel.
 
   
 
+# Unsupervised Learning
+
+## K-Means Algorithm
+
+Input:
+
+- K(number of clusters)
+- Training set {$x^{(1)},x^{(2)},...x^{(m)}$}
+
+$x^{(i)} \in \mathbb{R}^{n}$ (drop $x_0 = 1$ convention)
+
+Randomly initialize K cluster centroids $\mu_{1}, \mu_{2}, \ldots, \mu_{K} \in \mathbb{R}^{n}$
+
+Repeat {
+
+​		// cluster assignment step
+
+​		for i = 1 to m
+
+​				$c^{(i)}:= \text{index (from 1 to K) of cluster centroid closest to } x^{(1)} $
+
+​		//move centroids
+
+​		for k = 1 to K
+
+​				$\mu_k:=\text{average(mean) of points assigned to cluster k}$
+
+}
+
+note: if there are no points assigned to one cluster, you can eliminate this cluster or re-initialize its centroid.
+
+- Optimization objective:
+  $$
+  J\left(c^{(1)}, \ldots, c^{(m)}, \mu_{1}, \ldots, \mu_{K}\right) = \frac{1}{m}\sum_{i=1}^m ||x^{(i)}-\mu_{c^{(i)}}||^2
+  $$
+
+  $$
+  \begin{array}{c}{\min } \\ {c^{(1)}, \ldots, c^{(m)}} \\ {\mu_{1}, \ldots, \mu_{K}}\end{array} \  J\left(c^{(1)}, \ldots, c^{(m)}, \mu_{1}, \ldots, \mu_{K}\right)
+  $$
+
+The cluster assignment step is to minimize J with respect to $c^{(1)}, \ldots, c^{(m)}$ (holding $\mu_{1}, \ldots, \mu_{K}$  fixed).
+
+The move centroid step is to minimize J with respect to $\mu_{1}, \ldots, \mu_{K}$  .
+
+- Random initialization
+
+The k-means algorithm may converge into local optima according to its initialize value. We can do multiple k-means in order to get the global optima.
+
+For i = 1 to 100 {
+
+​		$\text{Randomly initialize K-means.}$
+
+​		$\text { Run K-means. Get } c^{(1)}, \ldots, c^{(m)}, \mu_{1}, \ldots, \mu_{K} .$
+
+​		$\text { Compute cost function (distortion) }\qquad J\left(c^{1}, \ldots, c^{(m)}, \mu_{1}, \ldots, \mu_{K}\right)$
+
+}
+
+Pick clustering that gave lowest cost $J\left(c^{1}, \ldots, c^{(m)}, \mu_{1}, \ldots, \mu_{K}\right)$
+
+Especially when k is small (2-10) , the multiple random initialization will always find the global optima. But if k is large the result of multiple random initialization may not have too much difference between the first try.
+
+- Choosing the Number of Clusters
+
+For the most part, the number of Clusters is still chosen manually. One way to do so automatically is the "Elbow method" (run k-mean algorithm using different k and find the elbow point) but it doesn't always work well.
+
+The better way is chose k according to what purpose are you running k-means, and what the value of k that serves that purpose.
+
