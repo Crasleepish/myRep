@@ -916,3 +916,68 @@ For the most part, the number of Clusters is still chosen manually. One way to d
 
 The better way is chose k according to what purpose are you running k-means, and what the value of k that serves that purpose.
 
+
+
+## Dimensionality Reduction
+
+- Motivation
+  - Data Compression
+  - run algorithm faster
+  - visualization
+
+When two of features are highly relevant to each other, instead of using this two features, we can define a new feature:
+
+2D-1D: data are lying on a straight line approximately;
+
+3D-2D: data are lying on a plat surface approximately.
+
+If we reduce out data down to 2 or 3 dimensions, we can plot these data in order to understand these data better.
+
+### Principal Component Analysis
+
+PCA is trying to find a lower dimensional space onto which to project the data, so as to minimize the squared projection error, i.e. the square distance between each point and the location of where it gets projected.
+
+PCA will find k directional vector to denote the k dimensional space. (one vector to denote a line i.e. one dimensional space)
+
+Unlike linear regression, PCA treats each of the feature equally. There are no special feature (y in linear regression).
+
+Reduce data from n-dimansions to k-dimensions. Here is the detail:
+
+1. Data preprocessing: feature scaling and mean nomalization
+
+2. Compute "covariance matrix":
+   $$
+   \Sigma = \frac{1}{m}\sum_{i=1}^n(x^{(i)})(x^{(i)})^T = \frac{1}{m}X^TX
+   $$
+
+   $$
+   X=\begin{pmatrix}x^{(1)T} \\ x^{(2)T} \\ \vdots \\ x^{(m)T} \end{pmatrix}
+   $$
+
+3. Compute "eigenvectors" of matrix $\Sigma$
+
+   ```matlab
+   [U,S,V] = svd(Sigma);    % or using eig(Sigma);
+   % svd function particularly implements "singular value decomposition"
+   % it will get eigenvectors of matrix when the matrix is a covariance matrix.
+   ```
+
+4. Capture first k columns to form up new matrix "Ureduce".
+
+   ```matlab
+   Ureduce = U(:, 1:k);
+   ```
+
+   each column of "Ureduce" is a direction vector we find.
+
+5. compute z
+   $$
+   z^{(i)} = U_{\text{reduce}}x^{(i)}
+   $$
+
+   ```matlab
+   z = Ureduce * x;
+   ```
+
+
+
