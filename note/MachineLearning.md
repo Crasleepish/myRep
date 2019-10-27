@@ -972,12 +972,77 @@ Reduce data from n-dimansions to k-dimensions. Here is the detail:
 
 5. compute z
    $$
-   z^{(i)} = U_{\text{reduce}}x^{(i)}
+   z^{(i)} = U_{\text{reduce}}^Tx^{(i)}
    $$
 
    ```matlab
-   z = Ureduce * x;
+   z = Ureduce' * x;
    ```
+
+### Reconstruction from compressed representation
+
+We can calculate our compressed k-dimension data back to n-dimension data approximately.
+$$
+x_{\text{approx}} = U_{\text{reduce}}z
+$$
+$x_{\text{approx}}$ is approximately x, they lie a k-dimension space. For example, if k = 1, then they all lie in a line.
+
+### Choosing the number of principal components (k)
+
+The objection of PCA is to minimize average squared projection error as follow for given k:
+$$
+\frac{1}{m}\sum_{i=1}^m||x^{(i)} - x_{\text{approx}}^{(i)}||^2
+$$
+Define total variation in the data:
+$$
+\frac{1}{m}\sum_{i=1}^m||x^{(i)}||^2
+$$
+Typically, choose k to be smallest value so that :
+$$
+\frac{\frac{1}{m} \sum_{i=1}^{m}\left\|x^{(i)}-x_{\text {approx}}^{(i)}\right\|^{2}}{\frac{1}{m} \sum_{i=1}^{m}\left\|x^{(i)}\right\|^{2}} \le 0.01
+$$
+We can say that "99% of variance is retained".
+
+For choosing k, one algorithm is by choosing different value of k, and run multiple times of svd function, and then calculate the percent of variance retained. This is inefficient.
+
+By calling:
+
+```matlab
+[U,S,V] = svd(Sigma);
+```
+
+S 是对角化矩阵：
+$$
+S =\left[\begin{array}{ccc}{S_{11}} & {} & {} & {} \\ {} & {S_{22}} & {} & {} \\ {} & {} & {} \ddots \\ {} & {} & {} & {S_{nn}}\end{array}\right]
+$$
+For given k:
+$$
+\frac{\frac{1}{m} \sum_{i=1}^{m}\left\|x^{(i)}-x_{\text {approx}}^{(i)}\right\|^{2}}{\frac{1}{m} \sum_{i=1}^{m}\left\|x^{(i)}\right\|^{2}}  = 1 - \frac{\sum_{i=1}^{k}S_{ii}}{\sum_{i=1}^nS_{ii}}
+$$
+So what we should do is :
+
+1. Call svd only once.
+
+2. Pick smallest value of k for which
+   $$
+   \frac{\sum_{i=1}^{k}S_{ii}}{\sum_{i=1}^nS_{ii}} \ge 0.99
+   $$
+   (99% of variance retained)
+
+### Applying PCA
+
+- Supervised learning speedup
+
+  Extract x^(i)^ from the dataset. Use PCA to map x^(i)^ to z ^(i)^. Feed (z^(i)^, y^(i)^) into supervised learning algorithm.
+
+  note that running PCA ony on the training set. When we get the mapping rule, this mapping can be applied as well to the examples cross validation sets and test sets.
+
+- Reduce memory/disk needed to store data
+
+Bad use of PCA:
+
+- To prevent overfitting: This might work OK, but isn't a good way to address overfitting.
+- Abuse of PCA: Before implementing PCA, first try running whatever you want to do with the original/raw data x^(i)^. Only if that doesn't do what you want, then implement PCA and consider using z^(i)^. 
 
 
 
