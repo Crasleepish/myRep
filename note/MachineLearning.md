@@ -1046,3 +1046,39 @@ Bad use of PCA:
 
 
 
+# Anomaly Detection
+
+- anomaly detection example
+
+  x^(i)^ = features of user i's activities
+
+  Model p(x) from data.
+
+  Identify unusual users by checking which have p(x) < ε
+
+  ( p(x) < ε denote anomaly and p(x) >= ε denote OK. )
+
+## Algorithm
+
+We assume that each features of x satisfies Gaussian Distribution (normal distribution). And each features are independent mutually. So that for training set : $\left\{x^{(1)}, ..., x^{(m)}\right\}$
+$$
+p(x) = p(x_1;\mu_1,\sigma_1^2)p(x_2;\mu_2,\sigma_2^2) \dots p(x_n;\mu_n,\sigma_n^2) \\ = \prod_{j=1}^np(x_j;\mu_j,\sigma_j^2)
+$$
+
+1. Choose features x~i~ that you think might be indicative of anomalous examples. Construct these features into a training data set $\left\{x^{(1)}, ..., x^{(m)}\right\}$
+
+2. Fit parameters $\mu_1,\dots,\mu_n,\sigma_1^2,\dots,\sigma_n^2$
+   $$
+   \mu_j=\frac{1}{m}\sum_{i=1}^m x_j^{(i)} \\
+   \sigma_j^2=\frac{1}{m}\sum_{i=1}^m \left(x_j^{(i)} - \mu_j\right)^2
+   $$
+
+3. Given new example x, compute p(x):
+   $$
+   p(x) = \prod_{j=1}^np(x_j;\mu_j,\sigma_j^2) \\
+   = \prod_{j=1}^{n} \frac{1}{\sqrt{2 \pi} \sigma_{j}} \exp \left(-\frac{\left(x_{j}-\mu_{j}\right)^{2}}{2 \sigma_{j}^{2}}\right)
+   $$
+   Anomaly if $p(x) < \epsilon$
+
+
+
