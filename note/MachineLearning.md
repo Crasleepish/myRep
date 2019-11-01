@@ -736,6 +736,28 @@ If a learning algorithm is suffering from **high variance**, getting more traini
 
 
 
+## Error metrics for skewed classed
+
+- Precision
+
+  Of all entries where we predicted y=1, what fraction actually is positive?
+  $$
+  \text{precision} = \frac{\text{true positives}}{\text{no. of predicted positive}}
+  $$
+
+- Recall
+
+  Of all entries that actually is positive, what fraction did we correctly predict as y=1?
+  $$
+  \text{recall} = \frac{\text{true positives}}{\text{no. of actual positive}}
+  $$
+
+How to trade off precision and recall: F1 Score.
+
+F1 Score = $2\frac{PR}{P+R}$.
+
+
+
 # Support Vector Machines
 
 ## Optimization Objective
@@ -1080,5 +1102,94 @@ $$
    $$
    Anomaly if $p(x) < \epsilon$
 
+How to choose parameter ε ?
 
+Try different ε and fit the model using cross validation set and then choose the ε which maximum the F1 score. 
+
+## Difference between anomaly detection algorithm and supervised learning algorithm
+
+|                      Anomaly detection                       |                     Supervised learning                      |
+| :----------------------------------------------------------: | :----------------------------------------------------------: |
+|   Very small number of positive examples (0-20 is common).   |       Large number of positive and negative examples.        |
+|              Large number of negative examples.              |                                                              |
+| Many different "types" of anomalies. Hard for any algorithm to learn from positive examples what the anomalies look like; | Enough positive examples for algorithm to get a sense of what positive examples are like. |
+| Future anomalies may look nothing like any of the anomalous examples we've seen so far. | Future positive examples likely to be similar to ones in training set. |
+
+## Choosing What Features to Use
+
+In terms of non-gaussian features, we can convert them to some more gaussian features, such as:
+
+x -> log(x);   x -> log(x + c)
+
+x -> x^1/2^;    x -> x^1/3^
+
+If anomaly detection algorithm is performing poorly and outputs a large value of p(x) for many normal examples and for many anomalous examples in the cross validation dataset. We can come up with some more features to distinguish between the nomal and the anomalous examples.
+
+For example, if we have 
+x~1~ = CPU load
+
+x~2~ = network traffic
+
+we can define x~3~ = x~1~ / x~2~ to detect those who have high CPU load but low network traffic computers.
+
+
+
+## Multivariate Gaussian distribution
+
+If our features are mutually correlated, we can use multivariate Gaussian distribution.
+
+Parameters: $\mu \in \R^n (\text{mean}), \Sigma \in \R^{n \times n} (\text{covariance matrix})$. 
+
+The PDF of x can represent as :
+$$
+p(x; \mu, \Sigma) = f_{\mathbf{x}}\left(x_{1}, \ldots, x_{n}\right)=\frac{1}{\sqrt{(2 \pi)^{n}|\mathbf{\Sigma}|}} \exp \left(-\frac{1}{2}(\mathbf{x}-\boldsymbol{\mu})^{\mathrm{T}} \mathbf{\Sigma}^{-1}(\mathbf{x}-\boldsymbol{\mu})\right)
+$$
+Parameter fitting:
+
+Give training set $\left\{x^{(1)}, x^{(2)}, \ldots, x^{(m)}\right\}$, we have
+$$
+\mu = \frac{1}{m} \sum_{i=1}^{m} x^{(i)} \\
+\Sigma = \frac{1}{m} \sum_{i=1}^{m}\left(x^{(i)}-\mu\right)\left(x^{(i)}-\mu\right)^{T}
+$$
+Flag an anomaly if $p(x) < \epsilon$
+
+|                        Original model                        |                 Multivariate Gaussian                 |
+| :----------------------------------------------------------: | :---------------------------------------------------: |
+| Need to manually create features to capture anomalies where x~1~,x~2~ take unusual combinations of values. | Automatically captures correlations between features. |
+|     Computationally cheaper (scales better to large n).      |            Computationally more expensive.            |
+|          OK even if m (training set size) is small.          |   Must have m>n or else $\Sigma$ is non-invertible.   |
+
+
+
+# Recommender Systems
+
+Given $x^{(1)}, \ldots, x^{\left(n_{m}\right)}$, to learn $\theta^{(1)}, \ldots, \theta^{\left(n_{u}\right)}$:
+$$
+\min _{\theta^{(1)}, \ldots, \theta^{\left(n_{u}\right)}} \frac{1}{2} \sum_{j=1}^{n_{u}} \sum_{i: r(i, j)=1}\left(\left(\theta^{(j)}\right)^{T} x^{(i)}-y^{(i, j)}\right)^{2}+\frac{\lambda}{2} \sum_{j=1}^{n_{u}} \sum_{k=1}^{n}\left(\theta_{k}^{(j)}\right)^{2}
+$$
+
+Given $\theta^{(1)}, \ldots, \theta^{\left(n_{u}\right)}$, to learn :$x^{(1)}, \ldots, x^{\left(n_{m}\right)}$: 
+$$
+\min _{x^{(1)}, \ldots, x^{\left(n_{m}\right)}} \frac{1}{2} \sum_{i=1}^{n_{m}} \sum_{j: r(i, j)=1}\left(\left(\theta^{(j)}\right)^{T} x^{(i)}-y^{(i, j)}\right)^{2}+\frac{\lambda}{2} \sum_{i=1}^{n_{m}} \sum_{k=1}^{n}\left(x_{k}^{(i)}\right)^{2}
+$$
+
+
+
+## Collaborative filtering algorithm
+
+1. One way to learn both x and θ is to intialize  θ randomly and learn x. And then learn θ then x ...
+
+After this iterative work, we finally get both x and θ.
+
+2. Another way is to learn x and θ simultaneously:
+
+$$
+J\left(x^{(1)}, \ldots, x^{\left(n_{m}\right)}, \theta^{(1)}, \ldots, \theta^{\left(n_{u}\right)}\right)\\ = \frac{1}{2} \sum_{(i, j): r(i, j)=1}\left(\left(\theta^{(j)}\right)^{T} x^{(i)}-y^{(i, j)}\right)^{2}+\frac{\lambda}{2} \sum_{i=1}^{n_{m}} \sum_{k=1}^{n}\left(x_{k}^{(i)}\right)^{2}+\frac{\lambda}{2} \sum_{j=1}^{n_{u}} \sum_{k=1}^{n}\left(\theta_{k}^{(j)}\right)^{2}
+$$
+
+$$
+\min _{x^{(1)}, \ldots, x^{\left(n_{m}\right)},\theta^{(1)}, \ldots, \theta^{\left(n_{u}\right)}} J\left(x^{(1)}, \ldots, x^{\left(n_{m}\right)}, \theta^{(1)}, \ldots, \theta^{\left(n_{u}\right)}\right)
+$$
+
+For a user with parameters θ and a movie with (learned) features x, predict a star rating of $\theta^Tx$.
 
