@@ -1193,3 +1193,92 @@ $$
 
 For a user with parameters θ and a movie with (learned) features x, predict a star rating of $\theta^Tx$.
 
+
+
+## Finding related movies
+
+For each product i, we learn a feature vector x^(i)^. 
+
+The movie j related to movie i when
+$$
+||x^{(i)} - x^{(j)}||
+$$
+is small.
+
+
+
+## Mean Normalization
+
+In case of some users who haven't rate any movie, we can use mean normalization.
+
+For any rating in training data, we subtract off the mean rating. For example, user 5 haven't rate any movie, 
+$$
+Y=\left[\begin{array}{ccccc}{5} & {5} & {0} & {0} & {?} \\ {5} & {?} & {?} & {0} & {?} \\ {?} & {4} & {0} & {?} & {?} \\ {0} & {0} & {5} & {4} & {?} \\ {0} & {0} & {5} & {0} & {?}\end{array}\right] \quad \mu=\left[\begin{array}{c}{2.5} \\ {2.5} \\ {2} \\ {2.25} \\ {1.25}\end{array}\right]
+$$
+
+$$
+Y=\left[\begin{array}{ccccc}{2.5} & {2.5} & {-2.5} & {-2.5} & {?} \\ {2.5} & {?} & {?} & {-2.5} & {?} \\ {?} & {2} & {-2} & {?} & {?} \\ {-2.25} & {-2.25} & {2.75} & {1.75} & {?} \\ {-1.25} & {-1.25} & {3.75} & {-1.25} & {?}\end{array}\right]
+$$
+
+So that the hypothesis of user 5 will be all 0, therefor the prediction of user 5 will equal to μ.
+
+
+
+# Large Scale Machine Learning
+
+## Stochastic Gradient Descent
+
+The previous Gradient Descent algorithm must be fed into all training data at one time per iteration. This is the so called Batch gradient descent.
+
+In contrast to batch gradient descent, Stochastic gradient descent need just one data at one time, but it is less precise.
+$$
+cost(\theta, (x^{(i)}, y^{(i)})) = \frac{1}{2}(h_\theta(x^{(i)}) - y^{(i)})^2 \\
+J_{train}(\theta) = \frac{1}{m}\sum_{i=1}^m cost(\theta, (x^{(i)}, y^{(i)}))
+$$
+
+1. Randomly shuffle (reorder) training examples.
+
+2. Repeat (1 - 10 times) {
+
+   ​	for i := 1, ... m {
+
+   ​		$\theta_{j}:=\theta_{j}-\alpha\frac{\partial}{\partial\theta_j}cost(\theta, (x^{(i)}, y^{(i)}))$ 
+
+   ​		      $=\theta_{j}-\alpha\left(h_{\theta}\left(x^{(i)}\right)-y^{(i)}\right) x_{j}^{(i)}$ (for every  j = 0, ... n)
+
+   ​	}
+
+   }
+
+The value of cost function will not necessarily reduce per iteration in Stochastic gradient descent algorithm.
+
+
+
+## Mini-batch gradient descent
+
+Batch gradient descent: Use all m examples in each iteration
+
+Stochastic gradient descent: Use 1 example in each iteration
+
+Mini-batch gradient descent: Use b examples in each iteration.
+
+The number of b which between 2 and 100 is always reasonable.
+
+For example, say b = 10, m = 1000.
+
+Repeat {
+
+​	for i = 1, 11, 21, 31, ... 991 {
+
+​		$\theta_j := \theta_{j}-\alpha\frac{1}{10}\sum_{k=i}^{i+9}\left(h_{\theta}\left(x^{(k)}\right)-y^{(k)}\right) x_{j}^{(k)}$ (for every j = 0, ... ,n)
+
+​	}
+
+}
+
+> We can also use Stochastic gradient descent to implement an online learning algorithm which can process a continuous stream of data.
+
+> When plot the learning curve of Stochastic gradient descent, we typically compute J **before** we update the θ in current iteration. We can also compute averaged cost per 100 (or 100 - 5000) iteration.
+
+
+
