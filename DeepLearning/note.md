@@ -78,3 +78,17 @@ ReLu函数和Leaky ReLu函数在0点处的导数值可以规定为其右极限�
 
 
 
+## Back Propagation
+
+![](./5.png)
+
+# Deep Neural Network
+
+$$
+\begin{array}{l}{d Z^{[L]}=A^{[L]}-Y} \\ {d W^{[L]}=\frac{1}{m} d Z^{[L]} A^{[L-1]^{T}}} \\ {d b^{[L]}=\frac{1}{m} n p . s u m\left(d Z^{[L]}, \text { axis }=1, \text { keepdims }=\text { True }\right)} \\ {d Z^{[L-1]}=W^{[L]^{T}} d Z^{[L]} * g^{(L-1]}\left(Z^{[L-1]}\right)} \\ \vdots \\ {d Z^{[1]}=W^{[2]} d Z^{[2]} * g^{\{[1]}\left(Z^{[1]}\right)} \\ {d W^{[1]}=\frac{1}{m} d Z^{[1]} A^{[0]^{T}}} \\ d b^{[1]}=\frac{1}{m} n p . s u m\left(d Z^{[1]}, a x i s=1, \text { keepdims }=\text { True }\right)\end{array}
+$$
+
+Note that * denotes element-wise multiplication)
+
+Note that $A^{[0]^T}$ is another way to denote the input features, which is also written as $X^T$
+
