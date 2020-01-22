@@ -92,3 +92,409 @@ Note that * denotes element-wise multiplication)
 
 Note that $A^{[0]^T}$ is another way to denote the input features, which is also written as $X^T$
 
+
+
+# Improving Deep Neural Networks
+
+## L2 Regularization
+
+The standard way to avoid overfitting is called **L2 regularization**. It consists of appropriately modifying your cost function, from:
+$$J = -\frac{1}{m} \sum\limits_{i = 1}^{m} \large{(}\small  y^{(i)}\log\left(a^{[L](i)}\right) + (1-y^{(i)})\log\left(1- a^{[L](i)}\right) \large{)}$$
+To:
+$$J_{regularized} = \small \underbrace{-\frac{1}{m} \sum\limits_{i = 1}^{m} \large{(}\small y^{(i)}\log\left(a^{[L](i)}\right) + (1-y^{(i)})\log\left(1- a^{[L](i)}\right) \large{)} }_\text{cross-entropy cost} + \underbrace{\frac{1}{m} \frac{\lambda}{2} \sum\limits_l\sum\limits_k\sum\limits_j W_{k,j}^{[l]2} }_\text{L2 regularization cost}$$
+
+Of course, because you changed the cost, you have to change backward propagation as well! All the gradients have to be computed with respect to this new cost.
+
+- The cost computation:
+  A regularization term is added to the cost
+- The backpropagation function:
+  There are extra terms in the gradients with respect to weight matrices
+- Weights end up smaller ("weight decay"):
+  Weights are pushed to smaller values.
+- 
+
+## Dropout Regularization
+
+最常用的是反向随机失活算法
+
+在进行训练，执行正向和反向传播算法时，对于每一条训练样例（每一个example），在神经网络的每一层随机敲除若干个结点，并连带去除其对应的输入输出，让该样例在这样一个简化后的神经网络上训练；然后对于下一条样例再执行一次这个随机处理过程，在这样处理后的另一个简化版神经网络上训练。
+
+处理完所有样例后，完成一次迭代。对于每一次迭代，都要进行该随机处理过程。
+
+例如：
+
+对于第l层，keep_prob = 0.8 (表示第l层上的每一个结点有0.8的概率保留，0.2的概率被敲除)
+
+生成一个随机的矩阵Dl（每一列对应一个样例）,表示相应位置的结点保留（1）或敲除（0）
+
+Dl = np.random.rand(Al.shape[0], Al.shape[1])
+
+Dl = (Dl < keep_prob).astype(int)
+
+将Dl=0对应位置上的Al元素置为0
+
+Al = np.multiply(Al, Dl)
+
+为了在正向传播时，不改变预测结果的期望值，需要保持Al总体的期望保持不变，剩下的全体元素除以keep_prob
+
+Al /= keep_prob
+
+在正向和反向传播时都需要在随机处理过后的简化神经网络上进行
+
+Backpropagation with dropout is actually quite easy. You will have to carry out 2 Steps:
+
+- You had previously shut down some neurons during forward propagation, by applying a mask  D[1]D[1]  to A1. In backpropagation, you will have to shut down the same neurons, by reapplying the same mask  D[1]D[1]  to dA1.
+- During forward propagation, you had divided A1 by keep_prob. In backpropagation, you'll therefore have to divide dA1 by keep_prob again (the calculus interpretation is that if  A[1]A[1]  is scaled by keep_prob, then its derivative  dA[1]dA[1]  is also scaled by the same keep_prob).
+
+注意：在测试预测时，不使用该随机敲除的过程，即和正常的正向传播算法完全相同。
+
+- Dropout is a regularization technique.
+- You only use dropout during training. Don't use dropout (randomly eliminate nodes) during test time.
+- Apply dropout both during forward and backward propagation.
+- During training time, divide each dropout layer by keep_prob to keep the same expected value for the activations. 
+
+
+
+## How to Understand Dropout
+
+随机失活算法本质上是避免训练过程依赖某几个特征参数来实现代价函数的下降，而迫使对代价函数下降的“贡献”尽可能地分散在各个特征参数上。
+
+和正则化（regularization）是起到相同的效果，将“贡献”分散后也就会起到减小正则化项（平方项）的作用。但随机失活算法更加具有自适应性。
+
+在选择keep_prob时，对于单元数多的层取较小的keep_prob，对单元数少的层取较大的keep_prob甚至取1，对第0层（即输入层）取keep_prob=1
+
+随机失活算法的缺点是会让debug无法进行，因为每次训练所用的网络都不能再现，代价函数的定义是具有随机性的。办法是在debug时关闭随机失活（keep_prob全取1），debug完后再开启。
+
+
+
+## Vanishing / Exploding gradients
+
+由于网络很深（L很大），并且由于Relu激活函数的使用，当权重矩阵W中的元素普遍大于1时，梯度会以L次幂指数级增加，即为梯度爆炸；反之，当权重矩阵W中的元素普遍小于1时，梯度会以(-L)次幂指数级减小，即为梯度消失。
+
+以目前的技术无法消除梯度爆炸和梯度消失现象，但可以通过合理的权重值初始化，尽可能减缓这些问题。
+
+当忽略b的影响时
+$$
+z = w_1x_1+w_2x_2+\dots+w_nx_n
+$$
+令w~n~的方差
+$$
+\text{var}(w_n)=\frac{1}{n}
+$$
+即标准差
+$$
+\text{std}(w_n)=\sqrt{\frac{1}{n}}
+$$
+
+
+则当 $\text{var}(x_n)=1$ 时（通过归一化来实现），$\text{var}(z)=1$，这就保持了方差不扩大，最终损失函数的方差也就不扩大
+
+在实际初始化W时，如果使用的Relu函数，则令方差为2/n
+$$
+W^{[l]}=np.random.randn(shape) * np.sqrt(2/n^{[l-1]})
+$$
+即“He. initialization”
+
+如果使用的是tanh函数，则令方差为1/n，又称为Xavier initialization.
+
+- Different initializations lead to different results
+- Random initialization is used to break symmetry and make sure different hidden units can learn different things
+- Don't intialize to values that are too large
+- He. initialization works well for networks with ReLU activations.
+
+
+
+## Optimization Algorithms
+
+简单的梯度下降算法训练的速度还比较慢，可以用其它更先进的优化算法。好的优化算法可能使原本几天完成的训练过程在几个小时内完成
+
+**Notations**: As usual, $\frac{\partial J}{\partial a } = $ `da` for any variable `a`.
+
+### Mini-Batch Gradient descent
+
+之前的梯度下降算法过程中，每次迭代会输入整个数据集，称为Batch Gradient descent；而Mini-Batch Gradient descent 就是一次迭代只输入其中k条数据，k一般取64,128,256,512等。
+
+此外，还有一种极端的做法，一次迭代只输入1条数据，称为Stochastic gradient descent，一般不会使用。
+
+- The difference between gradient descent, mini-batch gradient descent and stochastic gradient descent is the number of examples you use to perform one update step.
+- You have to tune a learning rate hyperparameter $\alpha$.
+- With a well-turned mini-batch size, usually it outperforms either gradient descent or stochastic gradient descent (particularly when the training set is large).
+
+Build mini-batches from the training set (X, Y). There are two steps:
+
+- **Shuffle**: Create a shuffled version of the training set (X, Y) as shown below. Each column of X and Y represents a training example. Note that the random shuffling is done synchronously between X and Y. Such that after the shuffling the $i^{th}$ column of X is the example corresponding to the $i^{th}$ label in Y. The shuffling step ensures that examples will be split randomly into different mini-batches. 
+
+![](./6.png)
+
+    permutation = list(np.random.permutation(m))
+    shuffled_X = X[:, permutation]
+    shuffled_Y = Y[:, permutation].reshape((1,m))
+- **Partition**: Partition the shuffled (X, Y) into mini-batches of size `mini_batch_size` (here 64). Note that the number of training examples is not always divisible by `mini_batch_size`. The last mini batch might be smaller, but you don't need to worry about this.
+
+```
+num_complete_minibatches = math.floor(m/mini_batch_size)
+for k in range(0, num_complete_minibatches):
+    mini_batch_X = shuffled_X[:, k * mini_batch_size : (k + 1) * mini_batch_size]
+    mini_batch_Y = shuffled_Y[:, k * mini_batch_size : (k + 1) * mini_batch_size]
+    mini_batch = (mini_batch_X, mini_batch_Y)
+    mini_batches.append(mini_batch)
+
+# Handling the end case (last mini-batch < mini_batch_size)
+if m % mini_batch_size != 0:
+    mini_batch_X = shuffled_X[:, num_complete_minibatches * mini_batch_size :]
+    mini_batch_Y = shuffled_Y[:, num_complete_minibatches * mini_batch_size :]
+    mini_batch = (mini_batch_X, mini_batch_Y)
+    mini_batches.append(mini_batch)
+```
+
+
+
+### Exponentially weighted averages
+
+在一些高级的优化算法中经常要求均值，一般会使用更高效的求均值算法。
+
+指数加权平均是一种近似计算平均值的online算法，空间复杂度只有O(1)
+
+对于一组数据$ x_1, x_2, x_3, ..., x_n $，按如下方式计算$v_t$
+$$
+\begin{aligned}
+& v_0 = 0 \\
+& v_1 = 0.9 v_0 + 0.1x_1 \\
+& v_2 = 0.9 v_1 + 0.1x_2 \\
+& \dots \\
+& v_n = 0.9 v_{n-1} + 0.1x_n
+\end{aligned}
+$$
+即
+$$
+v_t = \beta v_{t-1} + (1-\beta)x_t
+$$
+则$v_t$近似为前$\frac{1}{1-\beta}$个x值的平均值，如果蓝色数据点表示x，红色数据点表示v
+
+![](./7.png)
+
+- 偏差修正
+
+实际上述计算出的的近似均值点v的前10个点（更一般地，前$\frac{1}{1-\beta}$个点），距离真实的均值相差较大，可使用以下算法修正：
+$$
+v_t := \frac{v_t}{1-\beta^t}
+$$
+
+### Momentum
+
+Because mini-batch gradient descent makes a parameter update after seeing just a subset of examples, the direction of the update has some variance, and so the path taken by mini-batch gradient descent will "oscillate" toward convergence. Using momentum can reduce these oscillations.
+
+Momentum takes into account the past gradients to smooth out the update. We will store the 'direction' of the previous gradients in the variable $v$. Formally, this will be the exponentially weighted average of the gradient on previous steps. You can also think of $v$ as the "velocity" of a ball rolling downhill, building up speed (and momentum) according to the direction of the gradient/slope of the hill. 
+
+<img src="./8.png" style="width:400px;height:250px;">
+The red arrows shows the direction taken by one step of mini-batch gradient descent with momentum. The blue points show the direction of the gradient (with respect to the current mini-batch) on each step. Rather than just following the gradient, we let the gradient influence $v$ and then take a step in the direction of $v$.
+$$
+\begin{aligned}
+&v_{dW} = 0 \\
+&v_{db} = 0 \\
+&\text{on iteration t:} \\
+& \quad \text{for} \quad l = 1, ..., L: \\
+& \quad \text{compute dW, db on curren mini-batch} \\
+& \quad v_{dW^{[l]}} = \beta v_{dW^{[l]}} + (1 - \beta) dW^{[l]}  \\
+& \quad v_{db^{[l]}} = \beta v_{db^{[l]}} + (1 - \beta) db^{[l]}  \\
+& \quad W^{[l]} = W^{[l]} - \alpha v_{dW^{[l]}} \\
+& \quad b^{[l]} = b^{[l]} - \alpha v_{db^{[l]}}  \\
+\end{aligned}
+$$
+**Note** that:
+- The velocity is initialized with zeros. So the algorithm will take a few iterations to "build up" velocity and start to take bigger steps.
+- If $\beta = 0$, then this just becomes standard gradient descent without momentum. 
+
+**How do you choose $\beta$?**
+
+- The larger the momentum $\beta$ is, the smoother the update because the more we take the past gradients into account. But if $\beta$ is too big, it could also smooth out the updates too much. 
+- Common values for $\beta$ range from 0.8 to 0.999. If you don't feel inclined to tune this, $\beta = 0.9$ is often a reasonable default. 
+- Tuning the optimal $\beta$ for your model might need trying several values to see what works best in term of reducing the value of the cost function $J$. 
+
+### RMS prop
+
+方均根传播是另一种加速梯度下降的算法。
+
+考虑代价函数的梯度，在下降过程中，沿某个方向x的梯度分量很小，而沿另一个方向y的梯度分量很大，我们希望每一次迭代沿x方向多走一点，沿y方向少走一点。
+
+方均根传播是将前几次下降过程中的梯度各分量的方均根算出来，根据该方均根值调整下降的步长：
+$$
+\begin{aligned}
+&S_{dW} = 0 \\
+&S_{db} = 0 \\
+&\text{on iteration t:} \\
+& \quad \text{for} \quad l = 1, ..., L: \\
+& \quad \text{compute dW, db on curren mini-batch} \\
+& \quad S_{dW^{[l]}} = \beta S_{dW^{[l]}} + (1 - \beta) (dW^{[l]})^2  \\
+& \quad S_{db^{[l]}} = \beta S_{db^{[l]}} + (1 - \beta) (db^{[l]})^2  \\
+& \quad W^{[l]} = W^{[l]} - \alpha \frac{dW^{[l]}}{\sqrt{S_{dW^{[l]}}}} \\
+& \quad b^{[l]} = b^{[l]} - \alpha \frac{db^{[l]}}{\sqrt{S_{db^{[l]}}}}  \\
+\end{aligned}
+$$
+
+$\beta$通常取0.999.
+
+为了避免除0错误，通常会在上述分母上加一个非常小的值$\epsilon$，通常为1e-8，该值通常不需要调参，对性能没有影响。
+
+
+
+### Adam Optimization Algorithm
+
+实际工作更多使用的是将动量算法和该方均根传播算法相结合的Adam算法（自适应矩估计算法）。
+
+**How does Adam work?**
+1. It calculates an exponentially weighted average of past gradients, and stores it in variables $v$ (before bias correction) and $v^{corrected}$ (with bias correction). 
+2. It calculates an exponentially weighted average of the squares of the past gradients, and  stores it in variables $s$ (before bias correction) and $s^{corrected}$ (with bias correction). 
+3. It updates parameters in a direction based on combining information from "1" and "2".
+
+The update rule is, for $l = 1, ..., L$: 
+
+$$\begin{cases}
+v_{dW^{[l]}} = \beta_1 v_{dW^{[l]}} + (1 - \beta_1) \frac{\partial \mathcal{J} }{ \partial W^{[l]} } \\
+v^{corrected}_{dW^{[l]}} = \frac{v_{dW^{[l]}}}{1 - (\beta_1)^t} \\
+s_{dW^{[l]}} = \beta_2 s_{dW^{[l]}} + (1 - \beta_2) (\frac{\partial \mathcal{J} }{\partial W^{[l]} })^2 \\
+s^{corrected}_{dW^{[l]}} = \frac{s_{dW^{[l]}}}{1 - (\beta_2)^t} \\
+W^{[l]} = W^{[l]} - \alpha \frac{v^{corrected}_{dW^{[l]}}}{\sqrt{s^{corrected}_{dW^{[l]}}} + \varepsilon}
+\end{cases}$$
+where:
+- t counts the number of steps taken of Adam 
+- L is the number of layers
+- $\beta_1$ and $\beta_2$ are hyperparameters that control the two exponentially weighted averages. 
+- $\alpha$ is the learning rate
+- $\varepsilon$ is a very small number to avoid dividing by zero, always be 1e-8
+
+db也做同样处理.
+
+
+
+### The problem of local optima
+
+通常所谓的局部最优点出现的概率不高，一般出现的是“鞍点”。
+
+因为神经网络的参数向量一般是一个非常高维的向量，当梯度达到0时，局部最优点要在所有维度上的分量都是凹函数时才会出现，概率很低；而一部分维度上的分量为凸函数，另一部分分量为凹函数时，为“鞍点”。
+
+如果出现接近某一鞍点时，某一维度方向上的梯度很小，会花很长的时间才能跨过。
+
+使用Adam优化算法能加速跨过这种鞍点的过程。
+
+
+
+## Learning Rate Decay
+
+可以在训练的过程中逐渐减小学习速率，使得一开始可以使用较大的学习速率，以下是若干个学习速率衰减策略:
+
+(1 epoch = 1 pass through the whole data set)
+
+- 
+
+$$
+\alpha = \dfrac{1}{1+DecayRate*EpochNum}\alpha_0
+$$
+
+- 
+
+$$
+\alpha = 0.95^{EpochNum}\alpha_0
+$$
+
+- t is the number of mini-batches
+
+$$
+\alpha=\left\{ 
+\begin{align}
+&\alpha_1 & 0 \le t < t_1 \\
+&\alpha_2 & t_1 \le t < t_2 \\
+& \vdots
+\end{align}
+\right.
+$$
+
+- change learning rate manually
+
+
+
+## Batch Normalization
+
+一般的归一化是仅针对输入层数据的归一化，使输入数据符合均值0方差1的分布。
+
+批量归一化是对所有隐藏层的归一化，使出入下一层的激活值均值0方差1，可以加速训练过程。
+
+批量归一化作用于 $z^{[l](i)}$ 上。首先和输入层的归一化一样，计算所有数据在该位置上的激活值的均值和方差，减去均值，除以标准差。为了防止除0错误，分母上有个加$\epsilon$的项，一般取1e-8。
+
+（以下均针对第l层，式中省略[l]上标）
+$$
+\begin{aligned}
+& \mu = \dfrac{1}{m}\sum_iz^{(i)} \\
+& \sigma^2 = \dfrac{1}{m}\sum_i(z^{(i)} - \mu)^2 \\
+& z_{norm}^{(i)}=\dfrac{z^{(i)}-\mu}{\sqrt{\sigma^2+\epsilon}} \\
+\end{aligned}
+$$
+虽然将z的值进行了归一化，但为了使模型代价最小，需要每一层的激活值分布有其它的均值和标准差，因此再对归一化后的值改变为某种均值-标准差分布
+$$
+\tilde{z}^{(i)} = \gamma z_{norm}^{(i)}+\beta
+$$
+其中 $\gamma,\beta$ 均为模型参数，和W,b一样，通过优化算法（梯度下降，Adam等）来迭代更新
+
+通过学习到不同的 $\gamma,\beta$ 值，来控制该位置的z值的均值和标准差分别为$\gamma,\beta$。
+
+
+
+### Fitting Batch Norm into a Neural Network
+
+- 使用mini-batch时，均值，方差的计算都是一个针对这一个mini-batch的
+- 正向传播时，忽略b，即令b=0。因为z中的每一个值$z_i$都会减去各自的均值$\mu_i$，因此无论b是多少结果都一样。同样，反向传播时也忽略db。
+- 反向传播时，相应的导数也要变化，主要是多了$d\gamma, d\beta$，少了db。
+- 以上Batch Norm步骤，将z进行的一系列处理，与没有引入Batch Norm时比，可以看作是对$a^{[l-1]} \rightarrow z^{[l]}$ 映射关系的修改，修改后的映射仍为线性关系，只不过引入了新的学习参数$\gamma,\beta$。
+- 当使用该模型进行预测时，输入是单一一条数据，均值方差怎么确定？应该使用训练过程中各个mini-batch产生的均值方差的指数加权平均值，在训练过程中就计算并记录下来该值。
+
+
+
+**Why does Batch Norm work**
+
+批量归一化减小了较前的层中数据变化对较后的层的影响。
+
+在训练过程中，前层的数据发生变化，由于批量归一化的作用，后层的数据仍然被限定到特定的概率分布中，使得后层已经训练出的结果不需要做太大的变动。
+
+使得各层的训练独立性增加。
+
+
+
+## Multi-class classification
+
+逻辑回归用于产生0,1两种结果的分类，当面对多分类问题时，虽然可以训练多个逻辑回归结点，更好的选择是使用softmax激活函数。
+
+首先将z送入e指数函数处理，再计算各分量占所有分量和的比例，即
+$$
+a^{[L]} = \dfrac{e^{z^{[L]}}}{\sum_ie^{z^{[L]}_i}}
+$$
+
+### Loss Function
+
+数据标记（一条数据）：1表示所属类别为该位置对应的类
+$$
+y = [0, 0, ...,0, 1, 0, ...,0]
+$$
+预测向量
+$$
+\hat{y} = a^{[L]}
+$$
+损失函数 
+$$
+L(\hat{y}, y) = -\sum_i y_i \log \hat{y}_i
+$$
+整个数据集的损失函数
+$$
+J(W^{[1]},b^{[1]},...) = \frac{1}{m}\sum_j^mL(\hat{y}, y) 
+$$
+
+### Gradient descent
+
+softmax激活函数求导
+$$
+\begin{aligned} \frac{\partial L}{\partial z_{i}}=&-\sum_{k} y_{k} \frac{\partial \log \hat{y}_{k}}{\partial z_{i}}=-\sum_{k} y_{k} \frac{1}{\hat{y}_{k}} \frac{\partial \hat{y}_{k}}{\partial z_{i}} \\=&-y_{i}\left(1-\hat{y}_{i}\right)-\sum_{k \neq i} y_{k} \frac{1}{\hat{y}_{k}}\left(-\hat{y}_{k} \hat{y}_{i}\right) \\ &=-y_{i}\left(1-\hat{y}_{i}\right)+\sum_{k \neq i} y_{k}\left(\hat{y}_{i}\right) \\ &=-y_{i}+y_{i} \hat{y}_{i}+\sum_{k \neq i} y_{k}\left(\hat{y}_{i}\right) \\=& \hat{y}_{i}\left(\sum_{k} y_{k}\right)-y_{i}=\hat{y}_{i}-y_{i} \end{aligned}
+$$
+即
+$$
+dZ^{[L]}=\frac{1}{m}(\hat{Y} - Y)
+$$
+
