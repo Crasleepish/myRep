@@ -498,3 +498,260 @@ $$
 dZ^{[L]}=\frac{1}{m}(\hat{Y} - Y)
 $$
 
+
+
+# Convolutional Neural Networks
+
+> **Notation**:
+> - Superscript $[l]$ denotes an object of the $l^{th}$ layer. 
+>     - Example: $a^{[4]}$ is the $4^{th}$ layer activation. $W^{[5]}$ and $b^{[5]}$ are the $5^{th}$ layer parameters.
+>
+>
+> - Superscript $(i)$ denotes an object from the $i^{th}$ example. 
+>     - Example: $x^{(i)}$ is the $i^{th}$ training example input.
+>    
+> - Subscript $i$ denotes the $i^{th}$ entry of a vector.
+>     - Example: $a^{[l]}_i$ denotes the $i^{th}$ entry of the activations in layer $l$, assuming this is a fully connected (FC) layer.
+>    
+> - $n_H$, $n_W$ and $n_C$ denote respectively the height, width and number of channels of a given layer. If you want to reference a specific layer $l$, you can also write $n_H^{[l]}$, $n_W^{[l]}$, $n_C^{[l]}$. 
+> - $n_{H_{prev}}$, $n_{W_{prev}}$ and $n_{C_{prev}}$ denote respectively the height, width and number of channels of the previous layer. If referencing a specific layer $l$, this could also be denoted $n_H^{[l-1]}$, $n_W^{[l-1]}$, $n_C^{[l-1]}$. 
+
+
+
+## Edge Detection
+
+深度学习中的“卷积”运算与数字信号处理中的“卷积”定义不同，省略了水平垂直翻转操作，即相当于cross-correlation运算（加权求和）。
+
+卷积运算符右侧的矩阵称为“core”或“filter”或"window"
+
+常用的边缘检测核：
+
+- 垂直边缘$\begin{bmatrix} 1 & 0 & -1 \\ 1 & 0 & -1 \\ 1 & 0 & -1\end{bmatrix}$， 水平边缘$\begin{bmatrix} 1 & 1 & 1 \\ 0 & 0 & 0 \\ -1 & -1 & -1\end{bmatrix}$
+
+- 垂直边缘$\begin{bmatrix} 1 & 0 & -1 \\ 2 & 0 & -2 \\ 1 & 0 & -1\end{bmatrix}$ ，水平边缘$\begin{bmatrix} 1 & 2 & 1 \\ 0 & 0 & 0 \\ -1 & -2 & -1\end{bmatrix}$，sobel filter
+- 垂直边缘$\begin{bmatrix} 3 & 0 & -3 \\ 10 & 0 & -10 \\ 3 & 0 & -3\end{bmatrix}$，水平边缘$\begin{bmatrix} 3 & 10 & 3 \\ 0 & 0 & 0 \\ -3 & -10 & -3\end{bmatrix}$，scharr filter
+
+$边缘提取结果=\sqrt{垂直边缘提取结果^2 + 水平边缘提取结果^2}$
+
+
+
+## Padding
+
+若原图大小为n x n，过滤器大小为f x f，则卷积结果为(n-f+1) x (n-f+1)，如果要保持卷积运算结果和原图大小相同，需要在原图周围用0填充，填充的边缘宽度为p
+
+例如原图大小为6 x 6，p=1，则填充后的图大小为8 x 8
+
+考虑填充的情况，卷积运算结果的大小为n+2p-f+1
+
+- Valid convolutions: 填充为0的卷积运算
+- Same convolutions: 适当填充使得卷积运算结果与原图大小相同的卷积运算
+
+注：通常过滤器的大小选择为长宽均为奇数的方阵
+
+The main benefits of padding are the following:
+
+- It allows you to use a CONV layer without necessarily shrinking the height and width of the volumes. This is important for building deeper networks, since otherwise the height/width would shrink as you go to deeper layers. An important special case is the "same" convolution, in which the height/width is exactly preserved after one layer. 
+- It helps us keep more of the information at the border of an image. Without padding, very few values at the next layer would be affected by pixels as the edges of an image.
+
+<img src="./9.png" style="width:600px;height:400px;">
+
+
+
+## Strided Convolutions
+
+通常的卷积运算，过滤器在原图上的移动为从左到右，从上到下，一次一移动1格。
+
+带步长的卷积运算，过滤器的移动为一次移动s格（若移动后超出原图范围，则不进行此次移动）
+
+带步长的卷积运算，结果的大小为：
+$$
+\lfloor \dfrac{n + 2p - f}{s} + 1 \rfloor \times \lfloor \dfrac{n + 2p - f}{s} + 1 \rfloor
+$$
+
+
+
+## Convolutions Over Volume
+
+对于RGB图像，有3个通道，卷积与需要在三个通道上同时进行
+
+对于通道数为n~c~的输入，使用的过滤器大小应该为f x f x n~c~，过滤器不同通道的值不一定相同
+
+过滤器在卷积的过程中，每移动一次，产生一个数，为f x f x n~c~个数与对应输入中的值加权后的总和
+
+例如：
+
+对于6 x 6 x 3的输入，用3 x 3 x 3的过滤器，产生结果大小为4 x 4
+
+可以依次使用n~f~个过滤器处理输入，每个过滤器的大小均相同，产生多个相同大小的结果，多个结果层叠（stack）在一起，形成一个n~f~个通道的输出
+
+例如：
+
+对于6 x 6 x 3的输入，用2个3 x 3 x 3的过滤器，产生结果大小为4 x 4 x 2
+
+
+
+## One Layer of a Convolutional Network
+
+将每一个过滤器产生的卷积结果，加上偏置值b，送入ReLu函数处理，输出一个结果。
+
+将所有过滤器产生的结果如此处理后，层叠（stack）在一起，形成n~f~通道的输出。
+
+<img src="./10.png" style="width:800px;height:400px;">
+
+所有过滤器中的值，偏置值，都是需要通过学习得到的参数
+
+学习参数的个数：
+
+例如有10个大小为3 x 3 x 3的过滤器，则这一层的变量个数为:
+
+(3 x 3 x 3 + 1) x 10 = 280
+
+
+
+## Pooling Layers
+
+- Max Pooling（常用）
+
+过滤器在移动过程中不是加权求和，而是求最大值
+
+<img src="./11.png" style="width:400px;height:200px;">
+
+- Average Pooling
+
+不是求最大值，而是求平均值
+
+
+
+注：池化层没有学习参数，只有超参数
+
+- f: filter size
+
+- s: stride
+
+- Max or average pooling
+
+
+
+## Fully Connected Layer (FC)
+
+就是将输入展开为一维向量，与输出的激活值做全连接，即与经典神经网络层相同
+
+z = Wx + b
+
+a = g(z)
+
+
+
+## CNN Example
+
+![](/home/crasleepish/myRep/DeepLearning/12.png)
+
+注：
+
+- 通常将conv-pool的组合看作一层
+- 池化层相当于经典神经网络中的ReLu函数的作用
+- 通常随着层数的深入，通道数逐渐增大，长宽逐渐减小，最后是全连接层
+
+
+
+## Advantages of CNN
+
+- Parameter sharing: A feature detector (such as a vertical edge detector) that 's useful in one part of the image is probably useful in another part of the image.
+- Sparsity of connecions: In each layer, each output value depends only on a small number of inputs.
+
+
+
+## Batch Normalization of CNN
+
+之前所说的对于经典神经网络的batch normalization，是每一个units/neurons在所有m个数据上平均/求方差。即：对于n个units，需要学习n组$\gamma,\beta$ 
+
+而对于CNN，是每一个channel，在所有m * H * W个数值是求平均/方差。即：对于C个channel，需要学习C组$\gamma,\beta$ 。
+
+理解：
+
+原则是对每一个feature，在其生成的所有数据上求平均/方差。
+
+对于CNN来说，一个channel上的H * W个值都是由同一个卷积核生成的，这H * W个数是一个feature生成的，如果有m张图，一个channel对应一个feature对应m * H * W个数。（对比于经典神经网络，仿佛是在m * H * W个数据上得到的一个激活值）
+
+
+
+## Backpropagation in convolutional neural networks
+
+In modern deep learning frameworks, you only have to implement the forward pass, and the framework takes care of the backward pass, so most deep learning engineers don't need to bother with the details of the backward pass. The backward pass for convolutional networks is complicated. 
+
+### Computing dA:
+
+This is the formula for computing $dA$ with respect to the cost for a certain filter $W_c$ and a given training example:
+
+$$ dA += \sum _{h=0} ^{n_H} \sum_{w=0} ^{n_W} W_c \times dZ_{hw} \tag{1}$$
+
+Where $W_c$ is a filter and $dZ_{hw}$ is a scalar corresponding to the gradient of the cost with respect to the output of the conv layer Z at the hth row and wth column (corresponding to the dot product taken at the ith stride left and jth stride down). Note that at each time, we multiply the the same filter $W_c$ by a different dZ when updating dA. We do so mainly because when computing the forward propagation, each filter is dotted and summed by a different a_slice. Therefore when computing the backprop for dA, we are just adding the gradients of all the a_slices. 
+
+In code, inside the appropriate for-loops, this formula translates into:
+```python
+da_prev_pad[vert_start:vert_end, horiz_start:horiz_end, :] += W[:,:,:,c] * dZ[i, h, w, c]
+```
+
+### Computing dW:
+
+This is the formula for computing $dW_c$ ($dW_c$ is the derivative of one filter) with respect to the loss:
+
+$$ dW_c  += \sum _{h=0} ^{n_H} \sum_{w=0} ^ {n_W} a_{slice} \times dZ_{hw}  \tag{2}$$
+
+Where $a_{slice}$ corresponds to the slice which was used to generate the activation $Z_{ij}$. Hence, this ends up giving us the gradient for $W$ with respect to that slice. Since it is the same $W$, we will just add up all such gradients to get $dW$. 
+
+In code, inside the appropriate for-loops, this formula translates into:
+```python
+dW[:,:,:,c] += a_slice * dZ[i, h, w, c]
+```
+
+### Computing db:
+
+This is the formula for computing $db$ with respect to the cost for a certain filter $W_c$:
+
+$$ db = \sum_h \sum_w dZ_{hw} \tag{3}$$
+
+As you have previously seen in basic neural networks, db is computed by summing $dZ$. In this case, you are just summing over all the gradients of the conv output (Z) with respect to the cost. 
+
+In code, inside the appropriate for-loops, this formula translates into:
+```python
+db[:,:,:,c] += dZ[i, h, w, c]
+```
+
+### Pooling Layer
+
+- max pooling
+
+  define the mask of window according to the shape of the filter such as:
+
+$$
+ X = \begin{bmatrix}
+1 && 3 \\
+4 && 2
+\end{bmatrix} \quad \rightarrow  \quad M =\begin{bmatrix}
+0 && 0 \\
+1 && 0
+\end{bmatrix}\tag{4}
+$$
+
+- average pooling
+
+  define the mask of window according to the shape of the filter such as :
+  $$
+  M =\begin{bmatrix}
+  1/4 && 1/4 \\
+  1/4 && 1/4
+  \end{bmatrix}\tag{5}
+  $$
+  let dA be the gradient of cost with respect to the output of the pooling layer, same shape as A, dA_prev the gradient of cost with respect to the input of the pooling layer, same shape as A_prev
+
+```
+dA_prev[i, vert_start: vert_end, horiz_start: horiz_end, c] += M * dA[i, h, w, c]
+```
+
+
+
+
+
+
+
