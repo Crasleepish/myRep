@@ -751,7 +751,151 @@ dA_prev[i, vert_start: vert_end, horiz_start: horiz_end, c] += M * dA[i, h, w, c
 
 
 
+# Case of Networks
 
+- LeNet-5
+
+![](./13.png)
+
+在池化层后有非线性处理，原文中用sigmoid/tanh而非relu
+
+ref: LeCun et al., 1998. Gradient-based learning applied to document recognition
+
+- AlexNet
+
+![](./14.png)
+
+相比LeNet-5有更大规模的参数，使用了relu函数进非线性处理
+
+ref: Krizhevshy et. al., 2012. ImageNet classification with deep convolution neural networks
+
+- VGG-16
+
+CONV = 3x3 filter, s=1, same
+
+MAX-POOL = 2x2, s=2
+
+![](./15.png)
+
+结构统一，卷积层数量倍增，通过池化层将长宽半数减小
+
+ref: Simonyan & Zisserman 2015. Very deep convolutional networks for large-scale image recognition
+
+
+
+## Resudual Networks
+
+### The problem of very deep neural networkss
+
+In recent years, neural networks have become deeper, with state-of-the-art networks going from just a few layers (e.g., AlexNet) to over a hundred layers.
+
+* The main benefit of a very deep network is that it can represent very complex functions. It can also learn features at many different levels of abstraction, from edges (at the shallower layers, closer to the input) to very complex features (at the deeper layers, closer to the output). 
+* However, using a deeper network doesn't always help. A huge barrier to training them is vanishing gradients: very deep networks often have a gradient signal that goes to zero quickly, thus making gradient descent prohibitively slow. 
+* More specifically, during gradient descent, as you backprop from the final layer back to the first layer, you are multiplying by the weight matrix on each step, and thus the gradient can decrease exponentially quickly to zero (or, in rare cases, grow exponentially quickly and "explode" to take very large values). 
+* During training, you might therefore see the magnitude (or norm) of the gradient for the shallower layers decrease to zero very rapidly as training proceeds: 
+
+
+
+### Building a Residual Network
+
+In ResNets, a "shortcut" or a "skip connection" allows the model to skip layers:  
+
+<img src="./16.png" style="width:650px;height:200px;">
+The image on the left shows the "main path" through the network. The image on the right adds a shortcut to the main path. By stacking these ResNet blocks on top of each other, you can form a very deep network. 
+
+Having ResNet blocks with the shortcut also makes it very easy for one of the blocks to learn an identity function. This means that you can stack on additional ResNet blocks with little risk of harming training set performance.  
+
+(There is also some evidence that the ease of learning an identity function accounts for ResNets' remarkable performance even more so than skip connections helping with vanishing gradients).
+
+Two main types of blocks are used in a ResNet, depending mainly on whether the input/output dimensions are same or different:  the "identity block" and the "convolutional block."
+
+- The identity block
+
+The identity block is the standard block used in ResNets, and corresponds to the case where the input activation (say $a^{[l]}$) has the same dimension as the output activation (say $a^{[l+2]}$). Here is an alternative diagram showing the individual steps:
+
+<img src="./17.png" style="width:650px;height:150px;">
+
+The upper path is the "shortcut path." The lower path is the "main path." In this diagram, we have also made explicit the CONV2D and ReLU steps in each layer. To speed up training we have also added a BatchNorm step.
+
+A slightly more powerful version of this identity block: the skip connection "skips over" 3 hidden layers rather than 2 layers. 
+
+<img src="./18.png" style="width:650px;height:150px;">
+
+- The convolutional block
+
+The ResNet "convolutional block" is the second block type. You can use this type of block when the input and output dimensions don't match up. The difference with the identity block is that there is a CONV2D layer in the shortcut path: 
+
+<img src="./19.png" style="width:650px;height:150px;">
+
+* The CONV2D layer in the shortcut path is used to resize the input $x$ to a different dimension, so that the dimensions match up in the final addition needed to add the shortcut value back to the main path. 
+* For example, to reduce the activation dimensions's height and width by a factor of 2, you can use a 1x1 convolution with a stride of 2. 
+* The CONV2D layer on the shortcut path does not use any non-linear activation function. Its main role is to just apply a (learned) linear function that reduces the dimension of the input, so that the dimensions match up for the later addition step. 
+
+
+
+### Why do residual networks work
+
+Residual networks 可以很容易地训练与恒等函数关系，因此在网络深度很深时，也能保证至少不损害网络的整体性能
+
+![](./20.png)
+
+### A 50 layers ResNet model
+
+The following figure describes in detail the architecture of this neural network. "ID BLOCK" in the diagram stands for "Identity block," and "ID BLOCK x3" means you should stack 3 identity blocks together.
+
+<img src="./21.png" style="width:850px;height:150px;">
+
+The details of this ResNet-50 model are:
+- Zero-padding pads the input with a pad of (3,3)
+- Stage 1:
+    - The 2D Convolution has 64 filters of shape (7,7) and uses a stride of (2,2). Its name is "conv1".
+    - BatchNorm is applied to the 'channels' axis of the input.
+    - MaxPooling uses a (3,3) window and a (2,2) stride.
+- Stage 2:
+    - The convolutional block uses three sets of filters of size [64,64,256], "f" is 3, "s" is 1 and the block is "a".
+    - The 2 identity blocks use three sets of filters of size [64,64,256], "f" is 3 and the blocks are "b" and "c".
+- Stage 3:
+    - The convolutional block uses three sets of filters of size [128,128,512], "f" is 3, "s" is 2 and the block is "a".
+    - The 3 identity blocks use three sets of filters of size [128,128,512], "f" is 3 and the blocks are "b", "c" and "d".
+- Stage 4:
+    - The convolutional block uses three sets of filters of size [256, 256, 1024], "f" is 3, "s" is 2 and the block is "a".
+    - The 5 identity blocks use three sets of filters of size [256, 256, 1024], "f" is 3 and the blocks are "b", "c", "d", "e" and "f".
+- Stage 5:
+    - The convolutional block uses three sets of filters of size [512, 512, 2048], "f" is 3, "s" is 2 and the block is "a".
+    - The 2 identity blocks use three sets of filters of size [512, 512, 2048], "f" is 3 and the blocks are "b" and "c".
+- The 2D Average Pooling uses a window of shape (2,2) and its name is "avg_pool".
+- The 'flatten' layer doesn't have any hyperparameters or name.
+- The Fully Connected (Dense) layer reduces its input to the number of classes using a softmax activation. 
+
+
+
+ref: He et al., 2015. Deep residual networks for image recognition
+
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun. Deep Residual Learning for Image Recognition
+
+
+
+## Inception Network
+
+在一个Layer中同时使用多种卷积核，将产生的所有结果堆叠在一起，形成一个Volume
+
+![](./22.png)
+
+为了减小计算所需要的成本，会利用1x1卷积
+
+1x1卷积就是使用1x1xC大小的卷积核，可以用于减小Volume的通道个数n_C
+
+在Inception Network中，对于需要进行卷积运算的地方，先进行一次1x1卷积运算减小n_C，再用原来的卷积核进行运算：
+
+![](./23.png)
+
+![](./24.png)
+
+### Actual Inception Network Block
+
+![](./25.png)
+
+ref: Szegedy et al., 2014. Going Deeper with Convolutions
 
 
 
