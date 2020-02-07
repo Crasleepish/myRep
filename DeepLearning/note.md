@@ -899,3 +899,257 @@ ref: Szegedy et al., 2014. Going Deeper with Convolutions
 
 
 
+#  Object Detection Algorithm
+
+物体检测通常需要面对一幅图像中有多个对象的情况
+
+如果一幅图像中仅有一个对象，称为Classification with localization
+
+## Classification with localization
+
+与图像分类相比，除了输出一个表示类别的向量，还要额外输出几个值，表示一个方框，将目标的位置标示出来。
+
+方框的位置有4个值表示：中心点的xy坐标，方框的高和宽（也可以用左上角和右下角的坐标表示，也是4个值）
+
+通常约定图像最左上角为(0,0)，右下角为(1,1)
+
+例如检测3类目标（再加上3类目标均不存在的情况）
+
+1 - pedestrian
+
+2 - car
+
+3 - motorcycle
+
+4 - background
+
+图像的label格式如下：
+$$
+y = \begin{bmatrix}
+p_c \\ b_x \\ b_y \\ b_h \\ b_w \\ c_1 \\ c_2 \\c_3
+\end{bmatrix}
+$$
+$p_c$表示目标存在的概率，$b_x,b_y,b_h,b_w$表示方框位置，$c_1,c_2,c_3$表示目标属于哪一个类别，所属的类别对应的c值为1，其它为0
+
+![](./26.png)
+
+如这两种情况下的图片label应分别为
+$$
+\begin{bmatrix}
+1 \\ 0.45 \\ 0.7 \\ 0.4 \\ 0.4 \\ 0 \\ 1 \\0
+\end{bmatrix},
+\begin{bmatrix}
+0 \\ ？ \\ ？ \\ ？ \\ ？ \\ ？ \\ ？ \\？
+\end{bmatrix}
+$$
+？表示"don't care"，此处的值不影响最终的cost函数
+
+cost函数由label与CNN输出结果来定义，可以用均方差或log likelyhood lost等方式定义
+
+
+
+## Landmark detection
+
+例如需要得到一张人脸的眼角的位置，嘴的轮廓上各点的位置等等，即为地标检测
+
+与分类问题相比，只是把输出层改为了各个地标点的坐标
+
+如果需要检测k个点，则输出层为2k个值
+
+
+
+## Convolutional Implementation of Sliding Windows
+
+传统的滑动窗口检测就是定义一个固定大小的矩形框，将框内的图像送入CNN分类网络中；
+
+然后将矩形框按一定的步长，移动到下一个位置，不断重复上述过程，直到遍历完整张图片，最后把检测到目标的框的位置输出出来。
+
+传统的滑动窗口检测问题在于所需要的计算成本太高了。
+
+通过卷积来实现滑动窗口可以显著减小计算成本
+
+
+
+### Turning FC layer into convolutional layers
+
+![](./27.png)
+
+对于一个5x5x16的volume，使用400个5x5的卷积核，可以形成一个1x1x400的voume，和FC层的效果是一样的
+
+![](./28.png)
+
+首先使用卷积来实现CNN中的FC层
+
+将14x14x3的“窗口”送入CNN的输入端，产生一个1x1x4的输出
+
+再把一个16x16x3的图像送入相同的CNN，会产生一个2x2x4的输出，该2x2个cell分别对应“窗口”在图像中以步长2移动所到达的4个位置的CNN输出
+
+![](./29.png)
+
+"窗口"的步长是由MAX-POOL层控制的，这里MAX-POOL是2x2的，所以“窗口”的步长是2x2
+
+ref: Sermanet et al., 2014, OverFeat: Integrated recognition, localization and detection using convolutional networks
+
+
+
+## YOLO Algorithm
+
+滑动窗口仍然不能输出准确的物体边界框，更好的算法是YOLO算法
+
+首先将矩形图像用网格分割，通常分割为19x19。每一个单元格(cell)，对应一个输出，输出的格式与Classification with localization相同，假定检测的类别数与Classification with localization中描述的相同，即
+$$
+y = \begin{bmatrix}
+p_c \\ b_x \\ b_y \\ b_h \\ b_w \\ c_1 \\ c_2 \\c_3
+\end{bmatrix}
+$$
+label的定义有一些不同：
+
+- 只有物体的边界框的中心点所在的那一个cell，才负责标记该边界框，即只有那一个cell的$p_c=1$，其周围的其它cell或许也包含了该物体的一部分，但它们的$p_c$都是0
+- 一个cell**并不是**只检测cell内的像素点，它只是负责标记，其检测的目标大小可以是任意大小的
+- 边界框坐标是相对于cell大小的，即该cell的左上角为(0,0)，该cell的右下角为(1,1)
+- 边界框的高和宽是有可能大于cell边长的，即$b_h,b_w$有可能大于1
+
+如下面的例子（以3x3网络简化说明）
+
+![](./30.png)
+
+（对该简化版例子，CNN最终会输出一个3x3x8的volume）
+
+
+
+### Intersection Over Union
+
+如何衡量两个边界框之间的重合程度？使用交并比（IoU）。
+
+即：
+
+两个框的交集的面积 / 两个框的并集的面积
+
+例如：
+
+![](./32.png)
+
+
+
+### Anchor Boxes
+
+上述模型还有个缺陷，即一个cell只能标记一个目标，当多个目标出现在一个cell中（多个目标的边界框中心点都在一个cell中，下同），就会出现问题
+
+![](./33.png)
+
+此外，如果模型直接输出边界框的大小，输出的边界框会在一个很大的范围内波动
+
+使用锚点框有助于解决上述两个问题
+
+锚点框是根据训练数据集中各种对象边界框的大小，生成的“最具有代表性“的若干个框。每一个cell中都被分配了一组锚点框。这些锚点框的大小和高宽比都是固定不变的。
+
+模型中每个cell的输出根据锚点框的数量做相应的变化，比如只有2个锚点框：
+
+![](./31.png)
+
+label中的一个边界框，首先会分配给边界框中心点所在的cell，其次边界框会与各锚点框计算IoU（假定边界框的中心点与锚点框的中心点重合），选出最大的IoU对应的锚点框。这个边界框就会分配给这个锚点框。也就是说，不同的锚点框各自负责不同高宽比、不同大小的目标的检测。
+
+$b_x,b_y,b_h,b_w$不再表示边界框的绝对坐标和大小，而是表示相对于锚点框的大小。此处假定锚点框的中心点位于cell的中心点，$b_x,b_y,b_h,b_w$分别为边界框坐标xy与锚点框中心点的差值，边界框高宽与锚点框高宽的差值。
+
+- 锚点框的数量，大小如何选择
+
+每个锚点框只需要高、宽两个数来定义。
+
+首先将训练数据集中所有的边界框的高、宽取出来，假定这些边界框它们的中心点全部重合在一起，定义任意两个边界框这间的”距离“为(1-IoU)。使用K-means算法聚类出n个”平均框“，即为n个锚点框。
+
+数量需要拆衷考虑精度和计算成本，根据论文YOLO9000:Better, Faster, Stronger，选n=5比较好。
+
+
+
+### Non-max Suppression
+
+对于YOLO模型的输出来说，有可能有多个预测的边界框实际上是同一个目标，就需要用NMS来只保留最合适的那一个预测边界框。
+
+![](./34.png)
+
+首先只考虑一个锚点框，如anchor 1
+
+1. 计算每个框的score：$p_{c} \times c_i$中的最大值
+2. 去除所有score小于特定值的框，去除所有score<0.6的框
+3. 从待选集中选出score最大的框输出，并从待选集中去除所有与该最大框IoU>0.5（或其它设定值）的框（该最大框本身也会被去除）
+4. 重复3直到待选集为空
+
+
+
+### Summerize
+
+将上述内容整合起来就是YOLO算法的全貌
+
+- Inputs and outputs
+  - The **input** is a batch of images, and each image has the shape (m, 608, 608, 3)
+  - The **output** is a list of bounding boxes along with the recognized classes. Each bounding box is represented by 6 numbers $(p_c, b_x, b_y, b_h, b_w, c)$ as explained above. If you expand $c$ into an 80-dimensional vector, each bounding box is then represented by 85 numbers. 
+- Anchor Boxes
+  * Anchor boxes are chosen by exploring the training data to choose reasonable height/width ratios that represent the different classes.  For this assignment, 5 anchor boxes were chosen for you (to cover the 80 classes), and stored in the file './model_data/yolo_anchors.txt'
+  * The dimension for anchor boxes is the second to last dimension in the encoding: $(m, n_H,n_W,anchors,classes)$.
+  * The YOLO architecture is: IMAGE (m, 608, 608, 3) -> DEEP CNN -> ENCODING (m, 19, 19, 5, 85).  
+- Encoding
+
+![](./35.png)
+
+If the center/midpoint of an object falls into a grid cell, that grid cell is responsible for detecting that object.
+
+Since we are using 5 anchor boxes, each of the 19 x19 cells thus encodes information about 5 boxes. Anchor boxes are defined only by their width and height.
+
+For simplicity, we will flatten the last two last dimensions of the shape (19, 19, 5, 85) encoding. So the output of the Deep CNN is (19, 19, 425).
+
+![](./36.png)
+
+- Class score
+
+  Now, for each box (of each cell) we will compute the following element-wise product and extract a probability that the box contains a certain class.  
+  The class score is $score_{c,i} = p_{c} \times c_{i}$: the probability that there is an object $p_{c}$ times the probability that the object is a certain class $c_{i}$.
+
+  ![](./37.png)
+  Let's say we calculate the score for all 80 classes in box 1, and find that the score for the car class (class 3) is the maximum.  So we'll assign the score 0.44 and class "3" to this box "1".
+
+- Non-Max suppression
+
+  Plot the bounding boxes that it outputs:
+
+  <img src="./38.png" style="width:200px;height:200;">
+
+  In the figure above, we plotted only boxes for which the model had assigned a high probability, but this is still too many boxes. You'd like to reduce the algorithm's output to a much smaller number of detected objects.  
+
+  To do so, you'll use **non-max suppression**. Specifically, you'll carry out these steps: 
+  - Get rid of boxes with a low score (meaning, the box is not very confident about detecting a class; either due to the low probability of any object, or low probability of this particular class).
+  - Select only one box when several boxes overlap with each other and detect the same object.
+    1. Select the box that has the highest score.
+    2. Compute the overlap of this box with all other boxes, and remove boxes that overlap significantly (iou >= `iou_threshold`).
+    3. Go back to step 1 and iterate until there are no more boxes with a lower score than the currently selected box.
+
+ref:
+
+- Joseph Redmon, Santosh Divvala, Ross Girshick, Ali Farhadi - [You Only Look Once: Unified, Real-Time Object Detection](https://arxiv.org/abs/1506.02640) (2015)
+- Joseph Redmon, Ali Farhadi - [YOLO9000: Better, Faster, Stronger](https://arxiv.org/abs/1612.08242) (2016)
+- Allan Zelener - [YAD2K: Yet Another Darknet 2 Keras](https://github.com/allanzelener/YAD2K)
+- The official YOLO website (https://pjreddie.com/darknet/yolo/) 
+
+
+
+## Region Proposals: R-CNN
+
+候选区域算法是先将图像用分割算法分割成若干个颜色块，每个颜色块作为一个区域，在每个区域上执行卷积分类器，最终给出是否存在目标，以及目标的边界框位置。
+
+![](./39.png)
+
+但该算法很慢，之后提出的Fast R-CNN是使用了卷积实现的滑动窗口，来在候选区域上执行分类器
+
+此外还有Faster R-CNN 是使用了卷积神经网络来执行图像分割算法，提高了计算效率
+
+
+
+ref: 
+
+Girshik et. al., 2013. Rich feature hierarchies for accurate object detection and semantic segmentation
+
+Girshik, 2015, Fast R-CNN
+
+Ren et. al., 2016. Faster R-CNN: Towards real-time object detection with region proposal networks
+
+
+
