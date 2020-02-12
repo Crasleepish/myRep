@@ -1153,3 +1153,238 @@ Ren et. al., 2016. Faster R-CNN: Towards real-time object detection with region 
 
 
 
+# Face Recognition
+
+人脸识别需要克服的问题是“One Shot Learning”。如果用普通的图像分类器来训练人脸识别，每个人都需要有大量的训练样本，而且每加入一个新的人，就需要重新训练模型，这显然不现实。
+
+One Shot Learning即对于一个新的人，只需要这个人的一个样本，模型就是正确运作。
+
+实现One Shot Learning 的方法是训练一个diff(x, y)函数，用来返回x和y之间的差异程度。
+
+## Siamese Network
+
+一个神经网络定义的编码函数为 f(x)
+
+![](./40.png)
+
+一个输入图像对应一个输出的向量
+
+我们需要训练神经网络的参数，使得：
+
+- 如果$x^{(i)},x^{(j)}$是同一个人，$||f(x^{(i)})-f(x^{(j)})||^2$小
+- 如果$x^{(i)},x^{(j)}$是不同的人，$||f(x^{(i)})-f(x^{(j)})||^2$大
+
+有两种作法：FaceNet, DeepFace
+
+## FaceNet
+
+The FaceNet model takes a lot of data and a long time to train. So following common practice in applied deep learning, let's  load weights that someone else has already trained. The network architecture follows the Inception model from [Szegedy *et al.*](https://arxiv.org/abs/1409.4842). 
+
+- This network uses 96x96 dimensional RGB images as its input. Specifically, inputs a face image (or batch of $m$ face images) as a tensor of shape $(m, n_C, n_H, n_W) = (m, 3, 96, 96)$ 
+- It outputs a matrix of shape $(m, 128)$ that encodes each input face image into a 128-dimensional vector
+
+<img src="./41.png" style="width:680px;height:250px;">
+
+By computing the distance between two encodings and thresholding, you can determine if the two pictures represent the same person
+
+So, an encoding is a good one if: 
+- The encodings of two images of the same person are quite similar to each other. 
+- The encodings of two images of different persons are very different.
+
+The triplet loss function formalizes this, and tries to "push" the encodings of two images of the same person (Anchor and Positive) closer together, while "pulling" the encodings of two images of different persons (Anchor, Negative) further apart. 
+
+<img src="./42.png" style="width:280px;height:150px;">
+
+### The Triple Loss
+
+Training will use triplets of images $(A, P, N)$:  
+
+- A is an "Anchor" image--a picture of a person. 
+- P is a "Positive" image--a picture of the same person as the Anchor image.
+- N is a "Negative" image--a picture of a different person than the Anchor image.
+
+需要很多组这种数据，比如说由1000个组成的10000组这种数据
+
+These triplets are picked from our training dataset. We will write $(A^{(i)}, P^{(i)}, N^{(i)})$ to denote the $i$-th training example. 
+
+You'd like to make sure that an image $A^{(i)}$ of an individual is closer to the Positive $P^{(i)}$ than to the Negative image $N^{(i)}$) by at least a margin $\alpha$:
+$$
+\mid \mid f(A^{(i)}) - f(P^{(i)}) \mid \mid_2^2 + \alpha < \mid \mid f(A^{(i)}) - f(N^{(i)}) \mid \mid_2^2
+$$
+You would thus like to minimize the following "triplet cost":
+$$
+\mathcal{J} = \sum^{m}_{i=1} \large[ \small \underbrace{\mid \mid f(A^{(i)}) - f(P^{(i)}) \mid \mid_2^2}_\text{(1)} - \underbrace{\mid \mid f(A^{(i)}) - f(N^{(i)}) \mid \mid_2^2}_\text{(2)} + \alpha \large ] \small_+ 
+$$
+Here, we are using the notation "$[z]_+$" to denote $max(z,0)$.  
+
+$\alpha$ is called the margin. It is a hyperparameter that you pick manually. We will use $\alpha = 0.2$. 
+
+Most implementations also rescale the encoding vectors to haven L2 norm equal to one (i.e., $\mid \mid f(img)\mid \mid_2$=1)
+
+
+
+ref: Florian Schroff, Dmitry Kalenichenko, James Philbin (2015). [FaceNet: A Unified Embedding for Face Recognition and Clustering](https://arxiv.org/pdf/1503.03832.pdf)
+
+
+
+## DeepFace
+
+DeepFace将人脸识别问题转化为了二元分类回归问题
+
+![](./43.png)
+
+上下两个Siamese网络的参数保持相同，同步进行更新
+
+整个网络的输入是两张人脸图像，输出为0（不是同一个人）或1（是同一个人）
+$$
+\hat{y}=\sigma(\sum_{k=1}^{128}w_k|f(x^{(i)})_k-f(x^{(j)})_k| + b)
+$$
+其中的$|f(x^{(i)})_k-f(x^{(j)})_k|$为两个数的绝对值距离，也可以用其它距离表示，如卡方距离：
+$$
+\dfrac{(f(x^{(i)})_k-f(x^{(j)})_k)^2}{f(x^{(i)})_k+f(x^{(j)})_k}
+$$
+当模型训练完成后，实际使用时，通常会将数据库中的人脸的长度128的向量编码提前算出并存储起来。
+
+
+
+ref:
+
+Yaniv Taigman, Ming Yang, Marc'Aurelio Ranzato, Lior Wolf (2014). [DeepFace: Closing the gap to human-level performance in face verification](https://research.fb.com/wp-content/uploads/2016/11/deepface-closing-the-gap-to-human-level-performance-in-face-verification.pdf)
+
+
+
+# Neural Style Transfer
+
+Neural Style Transfer (NST) merges two images, namely: a **"content" image (C) and a "style" image (S), to create a "generated" image (G**).
+
+The generated image G combines the "content" of the image C with the "style" of image S.
+
+<img src="./44.png" style="width:750px;height:200px;">
+
+Neural Style Transfer (NST) uses a previously trained convolutional network, and builds on top of that. The idea of using a network trained on a different task and applying it to a new task is called **transfer learning**.
+
+Following the [original NST paper](https://arxiv.org/abs/1508.06576), we will use the VGG network. Specifically, we'll use VGG-19, a 19-layer version of the VGG network. 
+
+We will build the Neural Style Transfer (NST) algorithm in three steps:
+
+- Build the content cost function $J_{content}(C,G)$
+- Build the style cost function $J_{style}(S,G)$
+- Put it together to get $J(G) = \alpha J_{content}(C,G) + \beta J_{style}(S,G)$. 
+
+其中$\alpha,\beta$是超参数
+
+## Content Cost
+
+一个训练好的图像分类神经网络，其较浅的层通常会识别较简单的特征（如边，角等），中间的层通常会识别较复杂的特征（如，竖条纹，圆环状花纹等），更深的层识别更复杂的特征（如人，车，狗等）
+
+- Choose a "middle" activation layer $a^{[l]}$
+
+  We would like the "generated" image G to have similar content as the input image C. Suppose you have chosen some layer's activations to represent the content of an image.In practice, you'll get the most visually pleasing results if you choose a layer in the **middle** of the network--neither too shallow nor too deep. 
+
+- Forward propagate image "C"
+
+  * Set the image C as the input to the pretrained VGG network, and run forward propagation.  
+  * Let $a^{(C)}$ be the hidden layer activations in the layer you had chosen. This will be an $n_H \times n_W \times n_C$ tensor.
+
+- Forward propagate image "G"
+  * Repeat this process with the image G: Set G as the input, and run forward progation. 
+  * Let $a^{(G)}$ be the corresponding hidden layer activation. 
+
+- Content Cost Function $J_{content}(C,G)$
+
+  We will define the content cost function as:
+  $$
+  J_{content}(C,G) =  \frac{1}{4 \times n_H \times n_W \times n_C}\sum _{ \text{all entries}} (a^{(C)} - a^{(G)})^2
+  $$
+
+  * Here, $n_H, n_W$ and $n_C$ are the height, width and number of channels of the hidden layer you have chosen, and appear in a normalization term in the cost. 
+
+  * For clarity, note that $a^{(C)}$ and $a^{(G)}$ are the 3D volumes corresponding to a hidden layer's activations. 
+  * In order to compute the cost $J_{content}(C,G)$, it might also be convenient to unroll these 3D volumes into a 2D matrix, as shown below.
+  * 最前面的归一化系数并不重要，可以通过改变超参数$\alpha,\beta$来调节
+
+  <img src="./45.png" style="width:800px;height:400px;">
+
+
+
+## Style Cost
+
+### Style Matrix
+
+- Gram matrix
+  * The style matrix is also called a "Gram matrix." 
+  * In linear algebra, the Gram matrix G of a set of vectors $(v_{1},\dots ,v_{n})$ is the matrix of dot products, whose entries are ${\displaystyle G_{ij} = v_{i}^T v_{j} = np.dot(v_{i}, v_{j})  }$. 
+  * In other words, $G_{ij}$ compares how similar $v_i$ is to $v_j$: If they are highly similar, you would expect them to have a large dot product, and thus for $G_{ij}$ to be large. 
+
+Note that we will use $G_{gram}$ to refer to the Gram matrix, and $G$ to denote the generated image.
+
+- Compute $G_{gram}$
+
+  In Neural Style Transfer (NST), you can compute the Style matrix by multiplying the "unrolled" filter matrix with its transpose:
+
+  <img src="./46.png" style="width:900px;height:300px;">
+  $$
+  \mathbf{G}_{gram} = \mathbf{A}_{unrolled} \mathbf{A}_{unrolled}^T
+  $$
+  
+
+$G_{(gram)i,j}$ denotes the correlation:
+
+The result is a matrix of dimension $(n_C,n_C)$ where $n_C$ is the number of filters (channels). The value $G_{(gram)i,j}$ measures how similar the activations of filter $i$ are to the activations of filter $j$. 
+
+$G_{(gram),i,i}$ denotes the prevalence of patterns or textures:
+
+* The diagonal elements $G_{(gram)ii}$ measure how "active" a filter $i$ is. 
+* For example, suppose filter $i$ is detecting vertical textures in the image. Then $G_{(gram)ii}$ measures how common  vertical textures are in the image as a whole.
+* If $G_{(gram)ii}$ is large, this means that the image has a lot of vertical texture. 
+
+By capturing the prevalence of different types of features ($G_{(gram)ii}$), as well as how much different features occur together ($G_{(gram)ij}$), the Style matrix $G_{gram}$ measures the style of an image. 
+
+### Compute Style Cost
+
+For now, we are using only a single hidden layer $a^{[l]}$.  
+
+ The corresponding style cost for this layer is defined as: 
+$$
+J_{style}^{[l]}(S,G) = \frac{1}{4 \times {n_C}^2 \times (n_H \times n_W)^2} \sum _{i=1}^{n_C}\sum_{j=1}^{n_C}(G^{(S)}_{(gram)i,j} - G^{(G)}_{(gram)i,j})^2
+$$
+
+* $G_{gram}^{(S)}$ Gram matrix of the "style" image.
+* $G_{gram}^{(G)}$ Gram matrix of the "generated" image.
+
+We'll get better results if we "merge" style costs from several different layers. 
+
+Each layer will be given weights ($\lambda^{[l]}$) that reflect how much each layer will contribute to the style.
+
+By default, we'll give each layer equal weight, and the weights add up to 1.  ($\sum_{l}^L\lambda^{[l]} = 1$)
+$$
+J_{style}(S,G) = \sum_{l} \lambda^{[l]} J^{[l]}_{style}(S,G)
+$$
+
+### Solving the Optimization Problem
+
+首先将生成图像G初始化为随机噪点图像
+
+* The generated image is slightly correlated with the content image.
+
+* By initializing the pixels of the generated image to be mostly noise but slightly correlated with the content image, this will help the content of the "generated" image more rapidly match the content of the "content" image. 
+
+  ```
+  noise_image = np.random.uniform(-20, 20, (1, n_H, n_W, n_C)).astype('float32')
+  G = noise_image * 0.6 + content_image * (1 - 0.6)
+  ```
+
+  ![](./47.png)
+
+将G中每个像素点的值作为参数，送入总损失函数$J(G) = \alpha J_{content}(C,G) + \beta J_{style}(S,G)$
+
+以G中每个像素点的值作为参数进行最优化（梯度下降，Adam等）
+
+
+
+ref: 
+
+Leon A. Gatys, Alexander S. Ecker, Matthias Bethge, (2015). [A Neural Algorithm of Artistic Style](https://arxiv.org/abs/1508.06576)
+
+Harish Narayanan, [Convolutional neural networks for artistic style transfer.](https://harishnarayanan.org/writing/artistic-style-transfer/)
+
