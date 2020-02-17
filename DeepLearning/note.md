@@ -632,7 +632,7 @@ $$
 
 
 
-## Fully Connected Layer (FC)
+## Fully Connected Layer (FC) / Dense Layer
 
 就是将输入展开为一维向量，与输出的激活值做全连接，即与经典神经网络层相同
 
@@ -1387,4 +1387,407 @@ ref:
 Leon A. Gatys, Alexander S. Ecker, Matthias Bethge, (2015). [A Neural Algorithm of Artistic Style](https://arxiv.org/abs/1508.06576)
 
 Harish Narayanan, [Convolutional neural networks for artistic style transfer.](https://harishnarayanan.org/writing/artistic-style-transfer/)
+
+
+
+# Recurrent Neural Networks
+
+循环神经网络（RNN）主要用于序列模型，如声音，文字等。RNN具有“记忆”的机制，可以将已提取出的特征信息保留下来，作为下一个时间点的输入。
+
+应用：
+
+语音识别、乐曲生成、自然语言处理（情感分析、名字识别）、影像动作识别
+
+单向RNN只能用过去的信息作为输入，双向RNN可以用过去和未来的信息作为输入
+
+**Notation**:
+- Superscript $[l]$ denotes an object associated with the $l^{th}$ layer. 
+- Superscript $(i)$ denotes an object associated with the $i^{th}$ example. 
+- Superscript $\langle t \rangle$ denotes an object at the $t^{th}$ time-step. 
+- **Sub**script $i$ denotes the $i^{th}$ entry of a vector.
+
+Example:  
+
+- $a^{(2)[3]<4>}_5$ denotes the activation of the 2nd training example (2), 3rd layer [3], 4th time step <4>, and 5th entry in the vector.
+
+$x^{<t>}$由one-hot向量组成，即一个1,其它都是0的向量
+
+对于NLP，通常会建立一个字典，包含例如10000个单词（unique values），则每一个$x^{<t>}$就是一个（或m个）10000维的one-hot向量。即word-level的模型。
+
+也有character-level的模型，每个unique value是一个字符，但比较少用。
+
+
+
+## RNN cell
+
+A recurrent neural network can be seen as the repeated use of a single cell. 
+
+<img src="./48.png" style="width:700px;height:300px;">
+
+Takes as input $x^{\langle t \rangle}$ (current input) and $a^{\langle t - 1\rangle}$ (previous hidden state containing information from the past), and outputs $a^{\langle t \rangle}$ which is given to the next RNN cell and also used to predict $\hat{y}^{\langle t \rangle}$ 
+
+一种用增广矩阵的简化表示方法：
+
+$W_{aa}a^{<t-1>} + W_{ax}x^{<t>}$ 写作 $W_a[a^{<t-1>},x^{<t>}]$
+
+$W_{ya}$ 写作 $W_y$
+
+其中
+$$
+W_a = \left[W_{aa} | W_{ax}\right] \\
+[a^{<t-1>},x^{<t>}] = \begin{bmatrix}
+a^{<t-1>} \\
+x^{<t>}
+\end{bmatrix}
+$$
+
+
+## RNN forward pass
+
+- A recurrent neural network (RNN) is a repetition of the RNN cell that you've just built. 
+    - If your input sequence of data is 10 time steps long, then you will re-use the RNN cell 10 times. 
+- Each cell takes two inputs at each time step:
+    - $a^{\langle t-1 \rangle}$: The hidden state from the previous cell.
+    - $x^{\langle t \rangle}$: The current time-step's input data.
+- It has two outputs at each time step:
+    - A hidden state ($a^{\langle t \rangle}$)
+    - A prediction ($y^{\langle t \rangle}$)
+- The weights and biases $(W_{aa}, b_{a}, W_{ax}, b_{x})$ are re-used each time step. （在**一次**正向传播过程中保持不变，即每一个t时间点所用的参数都是相同的）
+
+<img src="./49.png" style="width:800px;height:180px;">
+
+The input sequence $x = (x^{\langle 1 \rangle}, x^{\langle 2 \rangle}, ..., x^{\langle T_x \rangle})$  is carried over $T_x$ time steps. The network outputs $y = (y^{\langle 1 \rangle}, y^{\langle 2 \rangle}, ..., y^{\langle T_x \rangle})$
+
+反向传播通常由深度学习框架自动完成
+
+
+
+## Different types of RNNs
+
+上面提到的RNN是输入序列长度等于输出序列长度的类型（many-to-many），此外还有：
+
+- many-to-one
+
+  ![](./50.png)
+
+  如情感分析应用，输入一段文字，输出这段文字代表的积极/消极程度
+
+- one-to-many
+
+  ![](./51.png)
+
+  如乐曲生成，文章生成。输入可以是0，或者是开头的第一个和弦/单词等
+
+- 输入输入序列长度不同的many-to-many
+
+  ![](./52.png)
+
+  如机器翻译
+
+
+注：实际在设计模型时，通常把一个cell看作一个“窗口”，沿着输入序列滑动，不断迭代更新窗口的输入值，同时将每一次滑动后产生的输出值保存下来。
+
+
+
+## Language model and sequence generation
+
+语言建模和序列生成是NLP的重要组成部分。
+
+字典通常由一系列常用单词组成，再加上UNKNOWN表示不在字典中的其它词，以及EOS表示“End Of Sentence”表示句子结束。
+
+要训练一个语言模型，对于一行训练数据（一句话）
+
+- 首先将$x^{<1>},a^{<0>}$初始化为0，作为一开始RNN cell的输入，预测下一个单词（这里也就是第一个单词）是什么，预测为$\hat{y}^{<1>}$
+- 然后将实际的下一个单词，以及上一步产生的特征作为RNN cell的输入，再预测下一个单词，预测为$\hat{y}^{<t>}$
+- 重复上一步，直到将最后一个单词输入，产生预测值为止。（该预测的真实值Label应该是EOS）
+
+![](./53.png)
+
+注：每一个预测值$\hat{y}^{<t>}$也是一个字典长度的向量，表示在已知前t-1个单词的情况下，第t个单词为字典中各个单词的概率。由softmax函数产生。
+
+损失函数：
+$$
+\mathcal{L}(\hat{y}^{<t>}, y^{<t>}) = -\sum_iy_i^{<t>}\log\hat{y}_i^{<t>}
+$$
+
+$$
+J = \sum_t\mathcal{L}(\hat{y}^{<t>}, y^{<t>})
+$$
+
+其中$y$其实就是$x$在时间t的维度上向前平移一个时间单位，再在末尾加上EOS
+
+
+
+## Sampling novel sequences
+
+在完成了语言模型的训练后，就可以用该模型进行“取样”来生成新的句子。
+
+首先将第一个单词或0作为第1个time-step的输入$x^{<1>}$ ，第1个time-step的a一般取0，即$a^{<0>}=0$
+
+然后使用输出的$\hat{y}^{<1>}$作为概率分布，从字典中按该分布随机取出一个单词作为$y^{<1>}$ 并保存下来
+
+然后将该 $y^{<1>}$ 和  $a^{<1>}$作为下一个time-step的输入，即$x^{<2>}=y^{<1>}$ 
+
+不断重复，直到输出EOS为止（或产生了足够长的序列，强制结束）
+
+如此就产生了一句新的句子
+
+注：当产生UNKNOWN时可以抛弃并重新随机取一个单词，直到不为UNKNOWN为止
+
+![](./54.png)
+
+
+
+## Vanishing Gradients and Exploding Gradients
+
+由于每一个time-step的学习参数（W,b）都是相同的，因此随着序列长度的增加，很容易发生梯度消失和梯度爆炸的问题。
+
+梯度消失的问题本质上是：提取出的特征信息会随着时间的推移而逐渐消失，一个时间点产生的输出只受距离其时间较近的时间点的影响，距离当前时间越久远的信息，影响越小。
+
+解决梯度消失问题的方法：Gated Recurrent Unit, Long Short Term Memory(LSTM)
+
+梯度爆炸问题：
+
+* When gradients are very large, they're called "exploding gradients."  
+* Exploding gradients make the training process more difficult, because the updates may be so large that they "overshoot" the optimal values during back propagation.
+
+使用“梯度裁剪”可以将梯度大小限制在一个范围内，解决梯度爆炸问题。
+
+![](./55.png)
+
+通常有两种梯度裁剪的方法：
+
+- element-wise裁剪：
+
+  设定一个threshold（正值），以[-threshold, threshold]作为梯度向量每一个分量(component)的范围，如果一个梯度分量小于-threshold，就将其置为-threshold；如果大于threshold，就将其置为threshold；否则保持不变。
+
+- norm-wise裁剪：
+
+  更常用的一种方法。设置一个norm_threshold，计算梯度向量的L2 norm（向量的模），如果向量的L2 norm小于等于norm_threshold，不做处理；如果向量的L2 norm大于norm_threshold，则将向量整体乘以norm_threshold/(L2 norm)进行缩放（rescale）。
+
+在每一次更新学习参数前先进行梯度裁剪，以避免梯度爆炸问题。
+
+
+
+## Long Short-Term Memory (LSTM) network
+
+由于梯度消失问题，有些问题变得很困难。比如训练语言模型，谓语动词要和主语的单复数保持一致，而谓语动词 可能离主语很远，因此用经典的RNN cell训练出的模型，主语的状态很难影响到离它很元的谓语动词。
+
+一种为了减轻梯度消失而优化的RNN cell。将提取出的信息分为长期记忆和短期记忆，通过“门”（Gate）来控制记忆的保持和遗忘，每个时间点的输出由长短期记忆共同决定。
+
+The following figure shows the operations of an LSTM-cell.
+
+<img src="./56.png" style="width:500;height:400px;">
+
+引入了$c^{<t>}$作为记忆变量，它由长短期记忆共同计算得到
+
+以下是各变量的计算方式
+
+- Forget gate $\mathbf{\Gamma}_{f}$
+
+  Let's assume we are reading words in a piece of text, and plan to use an LSTM to keep track of grammatical structures, such as whether the subject is singular ("puppy") or plural ("puppies"). 
+
+  If the subject changes its state (from a singular word to a plural word), the memory of the previous state becomes outdated, so we "forget" that outdated state.
+
+  The "forget gate" is a tensor containing values that are between 0 and 1.
+  * If a unit in the forget gate has a value close to 0, the LSTM will "forget" the stored state in the corresponding unit of the previous cell state.
+  * If a unit in the forget gate has a value close to 1, the LSTM will mostly remember the corresponding value in the stored state.
+
+  $$
+  \mathbf{\Gamma}_f^{\langle t \rangle} = \sigma(\mathbf{W}_f[\mathbf{a}^{\langle t-1 \rangle}, \mathbf{x}^{\langle t \rangle}] + \mathbf{b}_f)
+  $$
+  
+  * $\mathbf{W_{f}}$ contains weights that govern the forget gate's behavior. 
+  * The previous time step's hidden state $[a^{\langle t-1 \rangle}$ and current time step's input $x^{\langle t \rangle}]$ are concatenated together and multiplied by $\mathbf{W_{f}}$. 
+  * A sigmoid function is used to make each of the gate tensor's values $\mathbf{\Gamma}_f^{\langle t \rangle}$ range from 0 to 1.
+  * The forget gate  $\mathbf{\Gamma}_f^{\langle t \rangle}$ has the same dimensions as the previous cell state $c^{\langle t-1 \rangle}$. 
+  * This means that the two can be multiplied together, element-wise.
+  * Multiplying the tensors $\mathbf{\Gamma}_f^{\langle t \rangle} * \mathbf{c}^{\langle t-1 \rangle}$ is like applying a mask over the previous cell state.
+  * If a single value in $\mathbf{\Gamma}_f^{\langle t \rangle}$ is 0 or close to 0, then the product is close to 0.
+      * This keeps the information stored in the corresponding unit in $\mathbf{c}^{\langle t-1 \rangle}$ from being remembered for the next time step.
+  * Similarly, if one value is close to 1, the product is close to the original value in the previous cell state.
+      * The LSTM will keep the information from the corresponding unit of $\mathbf{c}^{\langle t-1 \rangle}$, to be used in the next time step.
+
+
+
+-  Candidate value $\tilde{\mathbf{c}}^{\langle t \rangle}$
+
+  The candidate value is a tensor containing information from the current time step that **may** be stored in the current cell state $\mathbf{c}^{\langle t \rangle}$.
+
+  Which parts of the candidate value get passed on depends on the update gate.
+
+  The candidate value is a tensor containing values that range from -1 to 1.
+
+  The tilde "~" is used to differentiate the candidate $\tilde{\mathbf{c}}^{\langle t \rangle}$ from the cell state $\mathbf{c}^{\langle t \rangle}$.
+  $$
+  \mathbf{\tilde{c}}^{\langle t \rangle} = \tanh\left( \mathbf{W}_{c} [\mathbf{a}^{\langle t - 1 \rangle}, \mathbf{x}^{\langle t \rangle}] + \mathbf{b}_{c} \right)
+  $$
+  
+  * The 'tanh' function produces values between -1 and +1.
+
+
+
+- Update gate $\mathbf{\Gamma}_{i}$
+
+  We use the update gate to decide what aspects of the candidate $\tilde{\mathbf{c}}^{\langle t \rangle}$ to add to the cell state $c^{\langle t \rangle}$.
+
+  The update gate decides what parts of a "candidate" tensor $\tilde{\mathbf{c}}^{\langle t \rangle}$ are passed onto the cell state $\mathbf{c}^{\langle t \rangle}$.
+
+  The update gate is a tensor containing values between 0 and 1.
+
+  * When a unit in the update gate is close to 1, it allows the value of the candidate $\tilde{\mathbf{c}}^{\langle t \rangle}$ to be passed onto the hidden state $\mathbf{c}^{\langle t \rangle}$
+  * When a unit in the update gate is close to 0, it prevents the corresponding value in the candidate from being passed onto the hidden state.
+
+  $$
+  \mathbf{\Gamma}_i^{\langle t \rangle} = \sigma(\mathbf{W}_i[a^{\langle t-1 \rangle}, \mathbf{x}^{\langle t \rangle}] + \mathbf{b}_i)
+  $$
+
+  * Similar to the forget gate, here $\mathbf{\Gamma}_i^{\langle t \rangle}$, the sigmoid produces values between 0 and 1.
+  * The update gate is multiplied element-wise with the candidate, and this product ($\mathbf{\Gamma}_{i}^{\langle t \rangle} * \tilde{c}^{\langle t \rangle}$) is used in determining the cell state $\mathbf{c}^{\langle t \rangle}$.
+
+
+
+- Cell state $\mathbf{c}^{\langle t \rangle}$
+
+  The cell state is the "memory" that gets passed onto future time steps.
+
+  The new cell state $\mathbf{c}^{\langle t \rangle}$ is a combination of the previous cell state and the candidate value.
+  $$
+  \mathbf{c}^{\langle t \rangle} = \mathbf{\Gamma}_f^{\langle t \rangle}* \mathbf{c}^{\langle t-1 \rangle} + \mathbf{\Gamma}_{i}^{\langle t \rangle} *\mathbf{\tilde{c}}^{\langle t \rangle}
+  $$
+
+  * The previous cell state $\mathbf{c}^{\langle t-1 \rangle}$ is adjusted (weighted) by the forget gate $\mathbf{\Gamma}_{f}^{\langle t \rangle}$
+  * and the candidate value $\tilde{\mathbf{c}}^{\langle t \rangle}$, adjusted (weighted) by the update gate $\mathbf{\Gamma}_{i}^{\langle t \rangle}$
+
+  
+
+- Output gate $\mathbf{\Gamma}_{o}$
+
+  The output gate decides what gets sent as the prediction (output) of the time step.
+
+  The output gate is like the other gates. It contains values that range from 0 to 1.
+  $$
+  \mathbf{\Gamma}_o^{\langle t \rangle}=  \sigma(\mathbf{W}_o[\mathbf{a}^{\langle t-1 \rangle}, \mathbf{x}^{\langle t \rangle}] + \mathbf{b}_{o})
+  $$
+
+  * The output gate is determined by the previous hidden state $\mathbf{a}^{\langle t-1 \rangle}$ and the current input $\mathbf{x}^{\langle t \rangle}$
+  * The sigmoid makes the gate range from 0 to 1.
+
+
+
+- Hidden state $\mathbf{a}^{\langle t \rangle}$
+
+  The hidden state gets passed to the LSTM cell's next time step.
+
+  It is used to determine the three gates ($\mathbf{\Gamma}_{f}, \mathbf{\Gamma}_{i}, \mathbf{\Gamma}_{o}$) of the next time step.
+
+  The hidden state is also used for the prediction $y^{\langle t \rangle}$.
+  $$
+  \mathbf{a}^{\langle t \rangle} = \mathbf{\Gamma}_o^{\langle t \rangle} * \tanh(\mathbf{c}^{\langle t \rangle})
+  $$
+
+  * The hidden state $\mathbf{a}^{\langle t \rangle}$ is determined by the cell state $\mathbf{c}^{\langle t \rangle}$ in combination with the output gate $\mathbf{\Gamma}_{o}$.
+  * The cell state state is passed through the "tanh" function to rescale values between -1 and +1.
+  * The output gate acts like a "mask" that either preserves the values of $\tanh(\mathbf{c}^{\langle t \rangle})$ or keeps those values from being included in the hidden state $\mathbf{a}^{\langle t \rangle}$
+
+
+
+- Prediction $\mathbf{y}^{\langle t \rangle}_{pred}$
+
+  The prediction is always a classification, so we'll use a softmax. There can be any other activation function.
+  $$
+  \mathbf{y}^{\langle t \rangle}_{pred} = \textrm{softmax}(\mathbf{W}_{y} \mathbf{a}^{\langle t \rangle} + \mathbf{b}_{y})
+  $$
+
+
+
+$W_f,b_f,W_i,b_i,W_o,b_o,W_c,b_c,W_y,b_y$都是训练参数
+
+
+
+ref:
+
+Hochreiter & Schmidhuber 1997. Long short-term memory
+
+
+
+## Gated Recurrent Unit (GRU)
+
+GRU是相对LSTM更简化的一个变种，它只有两个“门”（Gate）
+
+各变量计算方式如下：
+
+- Update Gate $\Gamma_u$ :
+  $$
+  \mathbf{\Gamma}_u^{\langle t \rangle} = \sigma(\mathbf{W}_u[\mathbf{a}^{\langle t-1 \rangle}, \mathbf{x}^{\langle t \rangle}] + \mathbf{b}_u)
+  $$
+
+- Relavent Gate $\Gamma_r$ :
+  $$
+  \mathbf{\Gamma}_r^{\langle t \rangle} = \sigma(\mathbf{W}_r[\mathbf{a}^{\langle t-1 \rangle}, \mathbf{x}^{\langle t \rangle}] + \mathbf{b}_r)
+  $$
+  下面计算$\tilde{\mathbf{c}}^{\langle t \rangle}$用到，用来表示生成的Candidate value与$\mathbf{a}^{<t-1>}$的相关程度
+
+- Candidate value $\tilde{\mathbf{c}}^{\langle t \rangle}$ :
+  $$
+  \tilde{\mathbf{c}}^{\langle t \rangle} = \text{tanh}(\mathbf{W_c}[\mathbf{\Gamma}_r * \mathbf{a}^{<t-1>},\mathbf{x}^{<t>}] + \mathbf{b}_c)
+  $$
+
+- Cell state $\mathbf{c}^{\langle t \rangle}$ :
+  $$
+  \mathbf{c}^{\langle t \rangle} = \mathbf{\Gamma}_u^{\langle t \rangle}* \mathbf{\tilde{c}}^{\langle t \rangle} + (1 - \mathbf{\Gamma}_{u}^{\langle t \rangle}) * \mathbf{c}^{\langle t-1 \rangle}
+  $$
+  这里的Update Gate $\Gamma_u$ 同时充当了LSTM中Forget Gate和Update Gate的作用。
+
+- Hidden state $\mathbf{a}^{\langle t \rangle}$ :
+  $$
+  \mathbf{a}^{\langle t \rangle} = \mathbf{c}^{\langle t \rangle}
+  $$
+
+- Prediction $\mathbf{y}^{\langle t \rangle}_{pred}$ :
+  $$
+  \mathbf{y}^{\langle t \rangle}_{pred} = \textrm{softmax}(\mathbf{W}_{y} \mathbf{a}^{\langle t \rangle} + \mathbf{b}_{y})
+  $$
+
+
+
+$W_u,b_u,W_r,b_r,W_c,b_c,W_y,b_y$ 都是训练参数。
+
+
+
+ref:
+
+Cho et al., 2014. On the properties of neural machine translation: Encoder-decoder approaches
+
+Chung et al., 2014. Empirical Evaluation of Gated Recurrent Neural Networks on Sequence Modeling
+
+
+
+## Bidirectional RNN (BRNN)
+
+双向RNN是从序列的开始和末尾分别遍历序列，然后使用两次遍历的结果共同生成输出。因此任何一个时间点的输出由过去和未来的所有数据共同决定。
+
+![](./57.png)
+
+一次Forward Propagetion分为从左到右和从右到左两次遍历，分别生成两组不同的特征状态$\overrightarrow{a}^{<1>}, \overleftarrow{a}^{<1>}$
+
+预测值由两组特征状态共同决定：
+$$
+\mathbf{\hat{y}}^{<t>}=g(\mathbf{W}_y[\overrightarrow{\mathbf{a}}^{<1>},\overleftarrow{\mathbf{a}}^{<1>}]+\mathbf{b}_y)
+$$
+
+
+## Deep RNNs
+
+每一个time-step有多层RNN cells堆叠而成，相当于多个hidden layers。
+
+![](./58.png)
+
+不同hidden layers之间的训练参数各不相同，不同time-step之间的训练参数保持相同。
+
+由于性能问题，一般这种层叠不超过3层。
+
+不过对于输出值$y^{<t>}$，可以再送入一个多层的神经网络（如多个Dense层），这些Dense层没有水平的连接。
+
+![](./59.png)
 
