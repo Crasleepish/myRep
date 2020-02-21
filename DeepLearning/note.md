@@ -1791,3 +1791,346 @@ $$
 
 ![](./59.png)
 
+
+
+# Natural Language Processing & Word Embeddings
+
+## Word Embeddings
+
+在之前的RNN中，我们使用1-hot向量来表示一个单词，这种表示的缺点是无法体现单词与单词之间的关系，因为任意两个1-hot向量的内积都是0
+
+如：orange - apple  ;  man - woman ; 等，词与词之间存在关系，因此为了体现这些关系，需要使用特征化的表示，word embeddings（词嵌入）
+
+例如，可以存在这样一种word embeddings，每个单词由一个50-dims的向量表示，每个分量分别表示：gender, age, color, food....
+
+man就可能表示为(-1, 0.03, 0.09, 0.01, ...)，woman可能表示为(1, 0.02, 0.08, 0.01, ...)
+
+使用t-SNE算法[1]可以将这些高维向量以一种非线性的方法映射到低维空间，将这些向量可视化，大致上呈现这样的形态：
+
+![](./60.png)
+
+这些word embeddings实际上是由特定的学习算法习得的（Word2vec, GloVe等），因此实际上每个向量的分量具体代表什么含义是不可解释的。因为在高维空间中，找，比如说50个，相互正交的单位向量作为基，有无数种找法，任何一种都可以作为word embeddings的基。但无论如何，word embeddings都可以很好地表示词与词之间的关系。
+
+
+
+- notation:
+
+  $o_{6257}$: 词典中索引为6257的词，对应的1-hot向量，如10000-dims向量(0,0,...1,...0)
+
+  $e_{6257}$: 词典中索引为6257的词，对应的词嵌入向量，如50-dims向量(0.96,0.01,0.09,...)
+
+
+
+使用词嵌入，可以对单词进行逻辑类比（Analogies）[2],例如：
+
+man -> woman   as to   king -> ?
+
+该问题即为把一个词向量$e_w$，使得 $e_{man} - e_{woman} \approx e_{king} - e_w$
+
+定义相似性函数sim(u,v)，表示两个向量u,v之间的相似程度，函数值越大越相似，那么应取$e_w$使得
+
+$\text{sim}(e_w, e_{king} - e_{man} + e_{woman})$ 取得最大值
+
+一个好的词嵌入应该会给出$e_w=e_{queen}$
+
+- 常用的相似性函数：
+
+- Cosine Similarity: 
+  $$
+  \text{sim}(u,v)=\dfrac{u^Tv}{||u||_2||v||_2}
+  $$
+  （||u||表示L2 norm）
+
+- square distance:
+  $$
+  \text{sim}(u,v) = -||u-v||^2
+  $$
+  
+
+ref:
+
+[1] van der Matten and Hinton., 2008. Visualizing data using t-SNE
+
+[2] Mikolov et. al., 2013, Linguistic regularities in continuous space word representations
+
+
+
+### Transfer learning
+
+使用预训练好的词嵌入模型，进一步应用于训练其它更具体的NLP应用时，只需要少量的labeled data，就可以达到很好的效果。和人脸识别中用到的预训练的卷积神经网络类似，将一个场景训练得到的模型用于其它新的场景的训练，即为迁移学习。
+
+建立NLP应用的一般步骤：
+
+1. 通过大量的文本语料库学习词嵌入模型，或下载开源的预训练的词嵌入模型（如100 billion words）
+2. 用词嵌入向量表示每一个单词，将其用于新的任务，如名字识别等。使用较少的labeled data训练（如100 k words）
+3. Optional: 如果有较多的新任务的labeled data，可以在训练新任务模型参数时，同时也调整词嵌入模型的参数。
+
+
+
+### Embedding matrix
+
+将字典中所有单词的词嵌入向量，组成一张矩阵，即为词嵌入矩阵
+
+如每一列表示一个单词
+$$
+E = \begin{bmatrix}| & | & | \\ e_1 & e_2 & e_3 & \dots \\ | & | & | \end{bmatrix}
+$$
+在数学表示上，有时会用如下表示来表示词嵌入向量和1-hot向量的关系：
+$$
+e_j = Eo_j
+$$
+但实际在设计的代码中不会做这样的计算，因为矩阵乘法的计算代价太高，实际中是用取slice的方法。
+
+
+
+## Learning Word Embeddings
+
+### Neural Language Model
+
+首先从一句话中选一个词作为target word。在这个词之前的几个词，比如4个词，作为context，输入一个模型，试图预测出target word。
+
+例如：词典中有10000个词，embedding vector是300-dims的
+
+![](./61.png)
+
+其中E.shape=(300, 1000)
+
+4个embedding vector组成一个1200-dims的向量，输入神经网络层，对应参数$W^{[1]},b^{[1]}$ 
+
+通过softmax层输出为一个(10000,1)的向量，对应参数$W^{[2]},b^{[2]}$, 表示词典中每个词是target word的概率
+
+与真正的target word计算loss，使用梯度下降等优化算法学习$E,W^{[1]},b^{[1]},W^{[2]},b^{[2]}$，最终得到的E就是我们所需要的词嵌入矩阵[1]
+
+
+
+上述为取Last 4 words的做法，此外，还可以是
+
+- 4 words on left & right:
+
+  a glass of orange ___ to go along with
+
+- Last 1 word:
+
+  orange ___
+
+- 该模型还可以进一步简化为Nearby 1 word: 
+
+  即target word附近一个范围内，随机的1个词作为context
+
+  又称为skip-gram，此即为Word2Vec模型
+
+
+
+ref:
+
+[1] Bengio et. al., 2003, A neural probabilistic language model
+
+
+
+### Word2Vec
+
+从语料中随机选一个词作为context。规定一个窗口，如前后5个词，在这个窗口范围内再随机选一个词作为target。
+
+将context输入模型，试图预测target。
+$$
+o_c \quad \underrightarrow{E} \quad e_c \rightarrow \text{softmax} \rightarrow \hat{y}
+$$
+$\hat{y}$的每个分量为，已经context为c的情况下，target为t的概率：
+$$
+p(t|c)=\dfrac{e^{\theta^T_te_c}}{\sum_{j=1}^{10000}e^{\theta^T_je_c}}
+$$
+其中$\theta^T_j$表示softmax层的参数矩阵中的第j行，也就是用于计算$\hat{y}$的第j个分量的参数。这里没有用到偏差值参数b，因为这里不影响我们的矩阵E的结果，当然，加上b也无所谓。
+
+
+
+这个模型或许在预测的准确度上并不理想，但我们要的是它的附产物，即E，词嵌入矩阵。实验证明，这个生成的矩阵是符合要求的。
+
+问题在于这个softmax层的计算，需要对大量数求和，这个计算代价很大，可以通过Negative Sampling进一步优化。
+
+> 还有一种优化softmax的想法是Hierarchical softmax，将所有可能的分类结果按概率组成一个哈夫曼树，分类结果返回的是一串类似于哈夫曼编码的序列，不过区别是每一位是介于0-1之间的数，表示“分类结果在当前结点左子树或右子树中的概率”
+
+
+
+- Negative Sampling:
+
+  上面的模型是输入context，预测词典中每一个词是target的概率。将这个问题修改一下：
+
+  输入context，以及一个词典索引t，预测context和t对应的词是一对context-target的概率。
+
+  训练数据按如下方法建立：
+
+  - 按照如上所述方法选定context和target，令label=1
+
+  - context不变，target在整个词典范围内随机选，令label=0（即使随机到正好与在规定的窗口中的词也无所谓，label都是0）。重复k次。
+  - 对于语料库数据较少的情况下k=5 ~ 20；数据较多的情况k=2 ~ 5
+
+  
+
+  - 输出值是一个sigmoid函数值，表示二元分类的结果：
+    $$
+    P(y=1|c,t)=\sigma(\theta^T_te_c)
+    $$
+    词典中每一个词对应一个不同的$\theta_t$， 即每一个词对应一个二元分类问题。
+
+    比如词典中有10,000个词，就有10,000个二元分类问题。
+
+  - 在之前的softmax的模型中，相当于每次迭代（每条语料）更新了10,000个二元分类问题的参数；而用Negative Sampling，相当于只更新了k+1个二元分类问题的参数。
+
+  - 经过训练，生成的嵌入矩阵E可以达到相近的效果。
+
+  - 随机选的k个negative词，可以按照如下经验分布：
+    $$
+    P(w_i)=\dfrac{f(w_i)^{3/4}}{\sum_{j=1}^{10000}f(w_i)^{3/4}}
+    $$
+    $f(w_i)$是词$w_i$在语料库中的观察频率。这样是为了不会过多地取到the,of,a等高频词，也不过多地取到罕见词。
+
+    
+
+ref:
+
+Mikolov et. al., 2013. Efficient estimation of word representations in vector space.
+
+Mikolov et. al., 2013. Distributed representation of words and phrases and their compositionality
+
+
+
+## GloVe Algorithm
+
+词与词之间的关系会很大程度上在两个词共同出现的统计概率上反应出来，GloVe算法就是在这个基础上建立的。
+
+- notation:
+
+  - context(i) :  所有以word i为中心的前后10个词的窗口范围内，所有的词
+
+  - $X_{ij}$: 在语料库中，所有context(i)中，word j出现的频次。$X_{ij}$ 组成矩阵$X$。
+
+与Word2Vec类似，可以通过神经网络来预测word i,j 的共同出现次数
+
+由于这里i,j的角色是对称的，因此$X_{ij}=X_{ji}$，即下标i,j互换不影响任何结果
+
+因此，对于神经网络的线性表达式$\theta^T_je_i+b_i$来说，输入向量$e_c$和参数$\theta^T$的角色也是可以互换的，于是该表达式改写为：$e^T_je_i+b_i$
+
+为了进一步保证对称性，再引入word j对应的偏移$b_j$：$e^T_je_i + b_i + b_j$
+
+- 损失函数：
+  $$
+  J=\sum_{i, j=1}^{V} f\left(X_{i j}\right)\left(e_{i}^{T} e_{j}+b_{i}+b_{j}-\log X_{i j}\right)^{2}
+  $$
+
+  - 其中V是词典的大小，如10,000
+
+  - 对$X_{ij}$取对数的原因是其变化范围非常大，基于训练效率上考虑而做的优化，具体见原论文[1] 
+
+  - 由于$X_{ij}$有可能是0，为了不使损失函数发散，需要剃除所有$X_{ij}=0$的项，由前面的系数$f(.)$控制
+
+  - $$
+    f(x)=\left\{\begin{array}{cc}{\left(x / x_{\max }\right)^{\alpha}} & {\text { if } x<x_{\max }} \\ {1} & {\text { otherwise }}\end{array}\right.
+    $$
+
+  - $x_{max}$对训练结果的影响不大，取原论文中的经验值，即
+
+    - $$
+      x_{max}=100 \\
+      \alpha=3/4
+      $$
+
+  - $f(.)$的作用除了去除$X_{ij}=0$的项，还调整了高频词如the,of,and等，以及低频词的损失权重。
+
+  - 由于$X$是一个稀疏矩阵，因此该损失函数的计算具有较高的效率
+
+  - $e_i,e_j$都是训练参数，通过梯度下降等优化算法迭代更新
+
+  - 如果没有把$\theta_j$的角色替换，最终会得到两个参数矩阵，$\theta,E$，由于对称性，需要做以下处理：
+    $$
+    e_i := \dfrac{e_i+\theta_i}{2}
+    $$
+
+
+
+ref:
+
+[1] Pennington et.al., 2014. GloVe: Global vectors for word representation
+
+
+
+## Sentiment Classification
+
+可采用如下RNN模型，以词嵌入向量作为输入
+
+<img src="./62.png" style="width:700px;height:400px;">
+
+词嵌入矩阵是通过大量语料习得的，只需要较少的labeled data就能训练出该模型，并且具有较好的表现。输入的即使是labeled data中没有出现的词语，大多数情况也能得到正确的结果。
+
+
+
+## Debiasing
+
+习得的词嵌入通常都会带有性别、种族方面的偏见，有时可能需要消除这种偏见
+
+比如：
+$$
+e_{man}-e_{nurse} > e_{woman} - e_{nurse}
+$$
+If you're using a 50-dimensional word embedding, the 50 dimensional space can be split into two parts: The bias-direction $g$, and the remaining 49 dimensions, which we'll call $g_{\perp}$. In linear algebra, we say that the 49 dimensional $g_{\perp}$ is perpendicular (or "orthogonal") to $g$, meaning it is at 90 degrees to $g$. The neutralization step takes a vector such as $e_{receptionist}$ and zeros out the component in the direction of $g$, giving us $e_{receptionist}^{debiased}$. 
+
+Even though $g_{\perp}$ is 49 dimensional, given the limitations of what we can draw on a 2D screen, we illustrate it using a 1 dimensional axis below. 
+
+<img src="./63.png" style="width:800px;height:300px;">
+
+$$
+e^{bias\_component} = \frac{e \cdot g}{||g||_2^2} * g
+$$
+$$
+e^{debiased} = e - e^{bias\_component}
+$$
+
+- Equalization:
+
+  The key idea behind equalization is to make sure that a particular pair of words are equi-distant from the 49-dimensional $g_\perp$. The equalization step also ensures that the two equalized steps are now the same distance from $e_{receptionist}^{debiased}$, or from any other work that has been neutralized. In pictures, this is how equalization works: 
+
+  <img src="./64.png" style="width:800px;height:400px;">
+
+$$
+\mu = \frac{e_{w1} + e_{w2}}{2}
+$$
+
+$$
+\mu_{B} = \frac {\mu \cdot \text{bias_axis}}{||\text{bias_axis}||_2^2} *\text{bias_axis}
+$$
+
+$$
+\mu_{\perp} = \mu - \mu_{B} 
+$$
+
+$$
+e_{w1B} = \frac {e_{w1} \cdot \text{bias_axis}}{||\text{bias_axis}||_2^2} *\text{bias_axis}
+$$
+$$
+e_{w2B} = \frac {e_{w2} \cdot \text{bias_axis}}{||\text{bias_axis}||_2^2} *\text{bias_axis}
+$$
+
+
+$$
+e_{w1B}^{corrected} = \sqrt{ |{1 - ||\mu_{\perp} ||^2_2} |} * \frac{e_{\text{w1B}} - \mu_B} {||(e_{w1} - \mu_{\perp}) - \mu_B||}
+$$
+
+
+$$
+e_{w2B}^{corrected} = \sqrt{ |{1 - ||\mu_{\perp} ||^2_2} |} * \frac{e_{\text{w2B}} - \mu_B} {||(e_{w2} - \mu_{\perp}) - \mu_B||}
+$$
+
+$$
+e_1 = e_{w1B}^{corrected} + \mu_{\perp}
+$$
+$$
+e_2 = e_{w2B}^{corrected} + \mu_{\perp} 
+$$
+
+
+
+ref:
+
+Bolukbasi et al., 2016, Man is to Computer Programmer as Woman is to Homemaker? Debiasing Word Embeddings
+
+
+
