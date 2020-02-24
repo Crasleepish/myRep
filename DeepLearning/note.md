@@ -2134,3 +2134,301 @@ Bolukbasi et al., 2016, Man is to Computer Programmer as Woman is to Homemaker? 
 
 
 
+# Machine Translation
+
+## Basic Model
+
+将法语句子作为输入，通过RNN输出对应的英语翻译结果，由于输入和输出的长度不同，因此可以用以下模型
+
+![](./65.png)
+
+首先左半部分是编码器(encoder)，负责将输出通过RNN转化为一个特征向量a
+
+右半部分是解码器(decoder)，特征向量输入解码器中，通过RNN生成输出结果
+
+此外还有一种类似的应用，是图像标识(Image captioning)，输入一张图像，输出一行概括该图像内容的文字标题
+
+![](./66.png)
+
+与机器翻译类似，只不过把encoder部分用卷积神经网络替代
+
+注意到decoder部分和RNN的语言模型在结构上一样，都是前一个time-step的输出作为下一个time-step的输入。但两者是有区别的，语言模型使用的是按照概率分布随机取样的方式决定输出，而机器翻译和图像标识都需要输出“概率最大”的结果。
+
+贪婪算法是一种简单直接的想法，每一个time-step都取概率最大的输出。每一步的概率最大并不能产生整体概率最大的输出。即，我们需要从y的所有可能中选择一种输出，使得
+$$
+\text{arg max}_{y^{<1>},\dots,y^{<T_y>}}P(y^{<1>},y^{<2>}, \dots, y^{<T_y>}|x)
+$$
+而
+$$
+P(y^{<1>},y^{<2>}, \dots, y^{<T_y>}|x)=P(y^{<1>}|x)P(y^{<2>}|x,y^{<1>}) \dots P(y^{<T_y>}|x,y^{<1>}, \dots, y^{<T_y-1>})
+$$
+能保证取到整体概率最大的输出，只能计算出所有可能的结果的概率，从中取最大。对于词典大小为V，长度为n的输出，有$n^V$种可能，全部计算出概率显然不现实，因此使用一种近似的搜索方法:Beam Search。
+
+
+
+ref:
+
+Sutskever et al., 2014. Sequence to sequence learing with neural networks
+
+Cho et al., 2014. Learning phrase representations using RNN encoder-decoder for statistical machine translation
+
+Mao et. al., 2014. Deep captioning with multimodal recurrent neural networks
+
+Vinyals et. al., 2014. Show and tell: Neural image caption generator
+
+Karpathy and Fei Fei, 2015. Deep visual-semantic alignments for generating image descriptions
+
+
+
+## Beam Search
+
+集束搜索法是每一步选择概率最大的B个输出，分别作为下一步的输出。B称为集束宽度(Beam Width)。
+
+例如：词典大小为10,000，B=3
+
+![](./67.png)
+
+第一步：从10,000种可能中选择3个概率最大的词作为下一步的输入，分别将3个概率代入$P(y^{<1>}|x)$
+
+第二步：由于上一步选了3种可能，这时会有3*10,000种可能，从中选择3个使得概率$P(y^{<1>}|x)P(y^{<2>}|x,y^{<1>})$最大的词，这时句子的前两个词就决定了
+
+第三步：此时又有3*10,000种可能，同样从中选择3个概率最大的词，这时句子的前三个词决定了
+
+...
+
+第t步：此时概率最大的三种选择里，有一个遇到了\<EOS\>，即句子结束
+
+第t+1步：从2*10,000种可能中选择3个概率最大的词
+
+第t+2步：从3*10,000种可能中选3个概率最大的词
+
+...
+
+上述步骤不断重复，可以规定一个句子最大长度，达到该长度后强制停止搜索。最终在多个不同长度的句子中选择概率最大的作为最终输出。
+
+
+
+以上的算法还有很多缺点需要改进
+
+- 概率的值普遍都很小，累乘的结果使得概率值以指数速度接近0，容易引起浮点数的下越界，或round-off误差
+  $$
+  \arg \max _{y} \prod_{t=1}^{T_{y}} P\left(y^{<t>} | x, y^{<1>}, \ldots, y^{<t-1>}\right)
+  $$
+  因此实际在计算概率时不使用上述公式，而是将其取对数：
+  $$
+  \arg \max _{y} \sum_{y=1}^{T_{y}} \log P\left(y^{<t>} | x, y^{<1>}, \ldots, y^{<t-1>}\right)
+  $$
+  每一步都取使得该式最大的B个选择
+
+- 最终在多个不同长度的句子中进行选择时，由于概率值是随着句子长度的增加而不断减小的，因此该算法总是倾向于输出很短的句子，因此需要对长度进行归一化，将以上概率改写如下：
+  $$
+  \dfrac{1}{T_y} \sum_{y=1}^{T_{y}} \log P\left(y^{<t>} | x, y^{<1>}, \ldots, y^{<t-1>}\right)
+  $$
+  其中$T_y$是输出句子的长度。
+
+  但有时也确实希望稍微倾向于短一点的句子，不希望输出结果过于冗长，可以采用如下折衷：
+  $$
+  \dfrac{1}{T_y^\alpha} \sum_{y=1}^{T_{y}} \log P\left(y^{<t>} | x, y^{<1>}, \ldots, y^{<t-1>}\right)
+  $$
+  其中$\alpha=0.7$是一个较为有效的经验取值
+
+- B的选择
+
+  通常的商用项目中取B=100左右是合理的，在一些研究项目中B=1000~3000也并不少见。
+
+- 调整RNN结构 or 增大B
+
+  比较错误的输出$\hat y$和期望的正确输出$y^*$的概率大小。即分别计算$P(y^*|x),P(\hat y|x)$，比较两者的大小。统计出各种错误输出的两种概率比较情况，如果$P(y^*|x)>P(\hat y|x)$占大多数情况，说明需要增加B；反之说明需要调整RNN模型结构。
+
+
+
+## Bleu Score
+
+由于正确的翻译有许多种，因此如何量化地评价机器翻译的结果，是一个重要的问题。
+
+比如对于一句话，有两种正确翻译（由人工给出）：reference1, reference2
+
+- 首先，一种朴素的想法是：统计在输出句子中，有多少个词是在至少一种正确翻译中出现过的。计算输出句子中这种词占句子总长度的比例。
+
+但这显然会有问题，比如下面的情况：
+
+![](./68.png)
+
+一种完全没有意义的输出得到了7/7的最高分。
+
+- 改进：一个词在各个正确翻译中，一句话中最多出现了c次，那么在输出中，该同样的词中最多得c分。该统计称为count clip。
+
+如上述情况中，the在Reference1中出现2次，在reference2中出现1次，于是c=2。因此在输出的得分中，the这个词只得2分。整句话得2/7分。
+
+- 以上将“一个单词”作为评价的最小单位，称作在unigram上的Bleu Score，接下来是在bigrams上的Bleu Score： 将“两个连续的词”作为评价的最小单位
+
+![](./69.png)
+
+同样使用上述count clip的统计方法，该得分为: 4/6
+
+- 更一般地，对于n-gram上的Bleu Score，记为$P_n$
+
+$$
+P_n=\dfrac{\sum\limits_{\text{n-gram} \in \hat y}CountClip(\text{n-gram})}{\sum\limits_{\text{n-gram} \in \hat y}Count(\text{n-gram})}
+$$
+
+- 最终Bleu Score
+  $$
+  BleuScore=BP \cdot \exp(\frac{1}{k}\sum_{n=1}^k P_n)
+  $$
+  即对所有n-gram得分取平均，再取对数
+
+  其中BP是brevity penalty，用来防止给很短的输出较高的分数。因为如果不加该修正系数，越短的输出结果越容易得到较高的得分。BP由下式给出
+  $$
+  BP=\left\{
+  \begin{array}{ll}
+  1 & \text{if MT_output_length > reference_output_length} \\
+  \exp(1-\text{reference_output_length/MT_output_length}) & \text{otherwise}
+  \end{array}
+  \right.
+  $$
+  
+
+ref:
+
+Papineini et. al., 2002. Bleu: A method for automatic evaluation of machine translation
+
+
+
+## Attention Model
+
+上面的Basic Model在短句子的翻译上表现良好，但对于较长的句子效果不理想。人在翻译长句子的时候也不是一口气读完整个句子，然后再开始翻译，而是边读句子，把注意力集中在局部，边翻译。
+
+注意力模型就是这样，该模型的每个输出结果，是注意力集中在不同的局部位置所得出的。
+
+* If you had to translate a book's paragraph from French to English, you would not read the whole paragraph, then close the book and translate. 
+* Even during the translation process, you would read/re-read and focus on the parts of the French paragraph corresponding to the parts of the English you are writing down. 
+* The attention mechanism tells a Neural Machine Translation model where it should pay attention to at any step. 
+
+* Here is a figure to remind you how the model works. 
+    * The figure 1 on the top shows the attention model. 
+    * The figure 2 on the bottom shows what one "attention" step does to calculate the attention variables $\alpha^{\langle t, t' \rangle}$.
+    * The attention variables $\alpha^{\langle t, t' \rangle}$ are used to compute the context variable $context^{\langle t \rangle}$ for each timestep in the output ($t=1, \ldots, T_y$). 
+
+![](./70.png)
+
+figure 1
+
+![](./71.png)
+
+figure 2
+
+- There are two separate LSTMs in this model (see figure 1): pre-attention and post-attention LSTMs.
+- *Pre-attention* Bi-LSTM is the one at the bottom of the figure 1 is a Bi-directional LSTM and comes *before* the attention mechanism.
+    - The attention mechanism is shown in the middle of the figure 1.
+    - The pre-attention Bi-LSTM goes through $T_x$ time steps
+- *Post-attention* LSTM: at the top of the figure 1 comes *after* the attention mechanism. 
+    - The post-attention LSTM goes through $T_y$ time steps. 
+- The post-attention LSTM passes the hidden state $s^{\langle t \rangle}$ and cell state $c^{\langle t \rangle}$ from one time step to the next. 
+- The LSTM has both the hidden state $s^{\langle t\rangle}$ and the cell state $c^{\langle t\rangle}$. 
+
+- $\overrightarrow{a}^{\langle t \rangle}$: hidden state of the forward-direction, pre-attention LSTM.
+
+- $\overleftarrow{a}^{\langle t \rangle}$: hidden state of the backward-direction, pre-attention LSTM.
+
+- $a^{\langle t \rangle} = [\overrightarrow{a}^{\langle t \rangle}, \overleftarrow{a}^{\langle t \rangle}]$: the concatenation of the activations of both the forward-direction $\overrightarrow{a}^{\langle t \rangle}$ and backward-directions $\overleftarrow{a}^{\langle t \rangle}$ of the pre-attention Bi-LSTM. 
+
+- Computing "energies" $e^{\langle t, t' \rangle}$ as a function of $s^{\langle t-1 \rangle}$ and $a^{\langle t' \rangle}$
+
+  - "e" is called the "energies" variable.
+  - $s^{\langle t-1 \rangle}$ is the hidden state of the post-attention LSTM
+  - $a^{\langle t' \rangle}$ is the hidden state of the pre-attention LSTM.
+  - $s^{\langle t-1 \rangle}$ and $a^{\langle t \rangle}$ are fed into a simple neural network, which learns the function to output $e^{\langle t, t' \rangle}$.
+  - $e^{\langle t, t' \rangle}$ is then used when computing the attention $\alpha^{\langle t, t' \rangle}$ that $y^{\langle t \rangle}$ should pay to $a^{\langle t' \rangle}$.
+
+- The figure 2 uses a `RepeatVector` node to copy $s^{\langle t-1 \rangle}$'s value $T_x$ times.
+
+- Then it uses `Concatenation` to concatenate $s^{\langle t-1 \rangle}$ and $a^{\langle t \rangle}$.
+
+- The concatenation of $s^{\langle t-1 \rangle}$ and $a^{\langle t \rangle}$ is fed into a "Dense" layer, which computes $e^{\langle t, t' \rangle}$. 
+
+- $e^{\langle t, t' \rangle}$ is then passed through a softmax to compute $\alpha^{\langle t, t' \rangle}$（即注意力权重）.
+  $$
+  \alpha^{<t, t^{\prime}>}=\frac{\exp \left(e^{<t, t^{\prime}>}\right)}{\sum_{t^{\prime}=1}^{T_{X}} \exp \left(e^{<t, t^{\prime}>}\right)}
+  $$
+
+- Note that the figure 2 doesn't explicitly show variable $e^{\langle t, t' \rangle}$, but $e^{\langle t, t' \rangle}$ is above the Dense layer and below the Softmax layer in the figure 2.
+
+- 通常机器翻译模型的输出结果，相邻词之间有较强的关联，因此，post-attention 中前一步的输出也会作为下一步的输入。
+
+- $y^{<t-1>}$与$context^{< t >}$相连接(concatenate)在一起.
+
+
+
+ref:
+
+Bahdanau et. al., 2014. Neural machine translation by jointly learning to align and translate
+
+Xu et. al., 2015. Show attention and tell: neural image caption generation with visual attention
+
+
+
+# Speech recognition - Audio data
+
+输入一段语音，输出对应的文字（字幕生成）
+
+通常首先需要将语音通过预处理转换为频谱，更确切的说，是转换为频谱随时间的变化图：
+
+规定一个时长很小的滑动窗口（如1ms），将该滑动窗口内部的声音波形做快速傅里叶变换。滑动窗口沿整个声音波形的时间轴移动，产生一系列随时间变化的频谱。（通常频谱很宽，截取最具代表性的一段，至少要包含整段时间内有明显振幅的最高频率）。如下图
+
+<img src="./72.png" style="width:320;height:240px;">
+
+上图中横轴表示时间，纵轴表示频率，颜色越暗表示能量低，颜色越亮表示能量高
+
+然后将预处理后的数据输入RNN
+
+![](./73.png)
+
+一般输入都会很长（1秒的语音会有几千的输入长度），而输出很短，会使用CTC cost(Connectionist temporal classification)
+
+RNN的输出可以是：
+
+ttt\_h\_eee\_\_\_\<space\>\_\_\_qqq\_\_ ... (space 代表空格)
+
+然后将 **没有被“\_”分割的相同字母** 重合为一个
+
+如上面的RNN输出就是"the quick brown fox"的开头一部分
+
+
+
+ref:
+
+Graves et. al., 2006. Connectionist Temporal Classification: Labeling unsegmented sequence data with recurrent neural networks
+
+
+
+## Trigger Word
+
+接收一段语音，当某个检测到某个触发词时，产生相应的动作。
+
+对每一段语音，输出是一段01序列，例如一段10秒的语音输出长度为1375的01序列
+
+当触发词发生在t时刻，对应触发词语音结束后位置的输出序列输出1,并且维持一段时间，如50个输出序列长度。
+
+如下图：
+
+<img src="./74.png" style="width:320;height:240px;">
+
+可能会由于触发位置接近输出结尾，维持1的长度小于50个单位。
+
+参考模型如下：
+
+![](./75.png)
+
+- 输入（Input）为经过预处理的频谱（原始音频数据长度10s，频谱数据大小为5511x101）
+- 首先送入1维卷积层(卷积核大小 15x101，类比2D卷积，相当于有101个通道)
+  - It inputs the 5511 step spectrogram.  Each step is a vector of 101 units.
+  * It outputs a 1375 step output
+  * This output is further processed by multiple layers to get the final $T_y = 1375$ step output. 
+  * Computationally, the 1-D conv layer also helps speed up the model because now the GRU  can process only 1375 timesteps rather than 5511 timesteps. 
+- Note that we use a **unidirectional RNN** rather than a bidirectional RNN. 
+* This is really important for trigger word detection, since we want to be able to detect the trigger word almost immediately after it is said. 
+* If we used a bidirectional RNN, we would have to wait for the whole 10sec of audio to be recorded before we could tell if "activate" was said in the first second of the audio clip.  
+
+
+
