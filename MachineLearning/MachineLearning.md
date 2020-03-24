@@ -967,9 +967,13 @@ Reduce data from n-dimansions to k-dimensions. Here is the detail:
 
 1. Data preprocessing: feature scaling and mean nomalization
 
+   let $\mu^{(i)}$ be the mean of $x^{(i)}$, $s^{(i)}$ be the standard variation of $x^{(i)}$
+
+   replace each $x^{(i)}$ with $\dfrac{x^{(i)} - \mu^{(i)}}{s^{(i)}}$
+
 2. Compute "covariance matrix":
    $$
-   \Sigma = \frac{1}{m}\sum_{i=1}^n(x^{(i)})(x^{(i)})^T = \frac{1}{m}X^TX
+   \Sigma = \frac{1}{m}\sum_{i=1}^m(x^{(i)})(x^{(i)})^T = \frac{1}{m}X^TX
    $$
 
    $$
