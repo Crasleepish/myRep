@@ -143,8 +143,8 @@ Al /= keep_prob
 
 Backpropagation with dropout is actually quite easy. You will have to carry out 2 Steps:
 
-- You had previously shut down some neurons during forward propagation, by applying a mask  D[1]D[1]  to A1. In backpropagation, you will have to shut down the same neurons, by reapplying the same mask  D[1]D[1]  to dA1.
-- During forward propagation, you had divided A1 by keep_prob. In backpropagation, you'll therefore have to divide dA1 by keep_prob again (the calculus interpretation is that if  A[1]A[1]  is scaled by keep_prob, then its derivative  dA[1]dA[1]  is also scaled by the same keep_prob).
+- You had previously shut down some neurons during forward propagation, by applying a mask  $D^{[1]}$ to A1. In backpropagation, you will have to shut down the same neurons, by reapplying the same mask  $D^{[1]}$ to dA1.
+- During forward propagation, you had divided A1 by keep_prob. In backpropagation, you'll therefore have to divide dA1 by keep_prob again (the calculus interpretation is that if  $D^{[1]}$  is scaled by keep_prob, then its derivative  $dA^{[1]}$ is also scaled by the same keep_prob).
 
 注意：在测试预测时，不使用该随机敲除的过程，即和正常的正向传播算法完全相同。
 
@@ -2323,6 +2323,7 @@ figure 2
     - The attention mechanism is shown in the middle of the figure 1.
     - The pre-attention Bi-LSTM goes through $T_x$ time steps
 - *Post-attention* LSTM: at the top of the figure 1 comes *after* the attention mechanism. 
+    
     - The post-attention LSTM goes through $T_y$ time steps. 
 - The post-attention LSTM passes the hidden state $s^{\langle t \rangle}$ and cell state $c^{\langle t \rangle}$ from one time step to the next. 
 - The LSTM has both the hidden state $s^{\langle t\rangle}$ and the cell state $c^{\langle t\rangle}$. 
